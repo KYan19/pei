@@ -59,6 +59,11 @@ def annual_average(ds, var):
     mean_annual = mean_data[var].groupby('time.year').mean()
     return mean_annual
 
+# Function to isolate data for a particular region
+def slice_region(ds, region):
+    ds_region = ds.sel(lon=masks[region][0],lat=masks[region][1])
+    return ds_region
+
 # Function to get names of available region masks
 def get_regions():
     return masks.keys()
