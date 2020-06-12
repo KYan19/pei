@@ -8,7 +8,7 @@ import numpy as np
 # Functions to be loaded into notebooks
 
 # Path to data file
-path = '/local/ss23/GFDL_LEs/ATM/RCP85/t_ref.rcp85.ens101.1950_1959.nc'
+path = '/local/ss23/CESM2_LE/ATM/RCP85/WBT/b.e21.BSSP370cmip6.f09_g17.LE2-1231.001.clm2.h7.WBT.2095010100-2100123100.nc'
 
 # Load data from matching file
 ds = xr.open_dataset(path)
