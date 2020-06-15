@@ -25,20 +25,31 @@ masks['Central North America'] = [lon.where((230<=lon)&(lon<=310),drop=True).val
 masks['South-Central America'] = [lon.where((230<=lon)&(lon<=330),drop=True).values,lat.where((-30<=lat)&(lat<=35),drop=True).values]
 masks['Southern South America'] = [lon.where((270<=lon)&(lon<=330),drop=True).values,lat.where((-60<=lat)&(lat<=-30),drop=True).values]
 masks['China'] = [lon.where((75<=lon)&(lon<=135),drop=True).values,lat.where((22.5<=lat)&(lat<=50),drop=True).values]
+masks['Southern China'] = [lon.where((98<=lon)&(lon<=125),drop=True).values,lat.where((22<=lat)&(lat<=32),drop=True).values]
 masks['India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=30),drop=True).values]
 masks['Oceania'] = [lon.where((100<=lon)&(lon<=180),drop=True).values,lat.where((-50<=lat)&(lat<=0),drop=True).values]
+masks['Northern Oceania'] = [lon.where((100<=lon)&(lon<=180),drop=True).values,lat.where((-23.5<=lat)&(lat<=0),drop=True).values]
+masks['Southern Oceania'] = [lon.where((100<=lon)&(lon<=180),drop=True).values,lat.where((-50<=lat)&(lat<=-23.5),drop=True).values]
 masks['Russia'] = [lon.where((30<=lon)&(lon<=180),drop=True).values,lat.where((50<=lat)&(lat<=75),drop=True).values]
 masks['Scandinavia'] = [lon.where((3<=lon)&(lon<=30),drop=True).values,lat.where((55<=lat)&(lat<=70),drop=True).values]
 lon_west = lon.where(lon>=345,drop=True)
 lon_east = lon.where(lon<=30,drop=True)
 lon_eur = xr.concat((lon_west,lon_east),dim='lon').values
 masks['Europe'] = [lon_eur,lat.where((35<=lat)&(lat<=55),drop=True)]
+lon_west = lon.where(lon>=350,drop=True)
+lon_east = lon.where(lon<=24,drop=True)
+lon_seur = xr.concat((lon_west,lon_east),dim='lon').values
+masks['Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=46),drop=True)]
 lon_west = lon.where(lon>=355,drop=True)
 lon_east = lon.where(lon<=10,drop=True)
 lon_france = xr.concat((lon_west,lon_east),dim='lon').values
 masks['France'] = [lon_france,lat.where((40<=lat)&(lat<=52),drop=True)]
 masks['Middle East'] = [lon.where((25<=lon)&(lon<=60),drop=True).values,lat.where((10<=lat)&(lat<=40),drop=True).values]
 masks['Southeast Asia'] = [lon.where((92<=lon)&(lon<=140),drop=True).values,lat.where((-10<=lat)&(lat<=25),drop=True).values]
+lon_west = lon.where(lon>=340,drop=True)
+lon_east = lon.where(lon<=55,drop=True)
+lon_safrica = xr.concat((lon_west,lon_east),dim='lon').values
+masks['Southern Africa'] = [lon_safrica,lat.where((-40<=lat)&(lat<=10),drop=True).values]
 
 # Function to calculate area-weighted annual mean temperature for a region
 def area_weighted(temp_data,area_data,region):
@@ -76,9 +87,20 @@ def map_region(region):
     fig, ax = plt.subplots(subplot_kw={'projection':crs})
     
     # Get longitude and latitude bounds for mask
-    ax.set_extent([masks[region][0][0],masks[region][0][-1],masks[region][1][0],masks[region][1][-1]],crs=crs)
+    if region != 'Global':
+        xmin = masks[region][0][0]
+        if xmin > 180:
+            xmin -= 360
+        xmax = masks[region][0][-1]
+        if xmax > 180:
+            xmax -= 360
+        ymin = masks[region][1][0]
+        ymax = masks[region][1][-1]
+        ax.set_extent([xmin,xmax,ymin,ymax],crs=crs)
     ax.coastlines()
     ax.add_feature(cfeature.BORDERS.with_scale('50m'))
+    ax.add_feature(cfeature.OCEAN, color='skyblue')
+    ax.add_feature(cfeature.LAND, color='lightgrey')
     
 # Function to plot temperature using cartopy
 def contour_plot(ds,region,title,cmap,borders=False):
