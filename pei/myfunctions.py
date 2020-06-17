@@ -4,6 +4,7 @@ from cartopy import crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.util import add_cyclic_point
 import numpy as np
+from xhistogram.xarray import histogram
 
 # Functions to be loaded into notebooks
 
@@ -24,6 +25,8 @@ masks['Northern North America'] = [lon.where((190<=lon)&(lon<=310),drop=True).va
 masks['Central North America'] = [lon.where((230<=lon)&(lon<=310),drop=True).values,lat.where((35<=lat)&(lat<=45),drop=True).values]
 masks['South-Central America'] = [lon.where((230<=lon)&(lon<=330),drop=True).values,lat.where((-30<=lat)&(lat<=35),drop=True).values]
 masks['Southern South America'] = [lon.where((270<=lon)&(lon<=330),drop=True).values,lat.where((-60<=lat)&(lat<=-30),drop=True).values]
+masks['Central America'] = [lon.where((250<=lon)&(lon<=315),drop=True).values,lat.where((7<=lat)&(lat<=20),drop=True).values]
+masks['Northern South America'] = [lon.where((270<=lon)&(lon<=330),drop=True).values,lat.where((-23.5<=lat)&(lat<=10),drop=True).values]
 masks['China'] = [lon.where((75<=lon)&(lon<=135),drop=True).values,lat.where((22.5<=lat)&(lat<=50),drop=True).values]
 masks['Southern China'] = [lon.where((98<=lon)&(lon<=125),drop=True).values,lat.where((22<=lat)&(lat<=32),drop=True).values]
 masks['India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=30),drop=True).values]
@@ -39,7 +42,7 @@ masks['Europe'] = [lon_eur,lat.where((35<=lat)&(lat<=55),drop=True)]
 lon_west = lon.where(lon>=350,drop=True)
 lon_east = lon.where(lon<=24,drop=True)
 lon_seur = xr.concat((lon_west,lon_east),dim='lon').values
-masks['Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=46),drop=True)]
+masks['Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=44),drop=True)]
 lon_west = lon.where(lon>=355,drop=True)
 lon_east = lon.where(lon<=10,drop=True)
 lon_france = xr.concat((lon_west,lon_east),dim='lon').values
@@ -50,6 +53,7 @@ lon_west = lon.where(lon>=340,drop=True)
 lon_east = lon.where(lon<=55,drop=True)
 lon_safrica = xr.concat((lon_west,lon_east),dim='lon').values
 masks['Southern Africa'] = [lon_safrica,lat.where((-40<=lat)&(lat<=10),drop=True).values]
+masks['Central Africa'] = [lon_safrica,lat.where((-10<=lat)&(lat<=10),drop=True).values]
 
 # Function to calculate area-weighted annual mean temperature for a region
 def area_weighted(temp_data,area_data,region):
@@ -146,3 +150,15 @@ def contour_plot(ds,region,title,cmap,borders=False):
     cbar = plt.colorbar(im,ax=ax,orientation='horizontal',fraction=0.05,pad=0.05)
     cbar.set_label('$^\circ\,K$',fontsize=12)
     plt.title(title)
+
+def hist(ds, area, region, ax, upper=40, lower=-20, numbins = 60, denom = 50, alpha=1):
+    bins = np.linspace(lower,upper,numbins)
+
+    ds_region = slice_region(ds,region)['WBT']
+    
+    area_region = slice_region(area,region)
+    area_weights = area_region/(area_region.sum(['lon','lat']))
+    
+    total_hist = histogram(ds_region,bins=[bins],weights=area_weights['land_area'],density=True,block_size=1)
+    hist_avg = total_hist/denom
+    hist_avg.plot(ax=ax, alpha=alpha)
