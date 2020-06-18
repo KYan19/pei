@@ -43,6 +43,7 @@ lon_west = lon.where(lon>=350,drop=True)
 lon_east = lon.where(lon<=24,drop=True)
 lon_seur = xr.concat((lon_west,lon_east),dim='lon').values
 masks['Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=44),drop=True)]
+masks['Southern Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=40),drop=True)]
 lon_west = lon.where(lon>=355,drop=True)
 lon_east = lon.where(lon<=10,drop=True)
 lon_france = xr.concat((lon_west,lon_east),dim='lon').values
@@ -151,14 +152,43 @@ def contour_plot(ds,region,title,cmap,borders=False):
     cbar.set_label('$^\circ\,K$',fontsize=12)
     plt.title(title)
 
-def hist(ds, area, region, ax, upper=40, lower=-20, numbins = 60, denom = 50, alpha=1):
+# Function to generate a histogram for a data array
+def hist(ds, area, region, ax, upper=40, lower=-20, numbins = 60, denom = 50):
+    # Histogram bins
     bins = np.linspace(lower,upper,numbins)
 
+    # Get WBT data for region
     ds_region = slice_region(ds,region)['WBT']
     
+    # Get area weights for grid cells in region
     area_region = slice_region(area,region)
     area_weights = area_region/(area_region.sum(['lon','lat']))
     
+    # Generate histogrma and get average distribution
     total_hist = histogram(ds_region,bins=[bins],weights=area_weights['land_area'],density=True,block_size=1)
     hist_avg = total_hist/denom
-    hist_avg.plot(ax=ax, alpha=alpha)
+    hist_avg.plot(ax=ax)
+
+# Function to plot two histograms on the same axes (comparing time periods)
+def hist2(ds1, ds2, area, region):
+    fig, ax = plt.subplots()
+    hist(ds1,area,region,ax)
+    hist(ds2,area,region,ax)
+    ax.set_xlabel('WBT (Celsius)')
+    ax.set_ylabel('Average Frequency (Days Per Year)')
+    ax.set_title(region + ': Annual Distributions of Maximum Daily WBT')
+    ax.legend(['1980-1990','2085-2095'], loc='upper left')
+    fig.savefig(region+'WBTmax.png')
+    
+# Function to plot histograms for all ensemble members on the same axes
+def ensemble_hist(ds,area,region,upper=40,lower=-20,numbins=60):
+    fig, ax = plt.subplots()
+    hist(ds,area,region,ax,lower=lower,numbins=numbins)
+    for i in range(0,5):
+        ds_ens = ds_2085_max.isel(ensemble=i)
+        hist(ds_ens,area.isel(ensemble=0),region,ax,denom=10,lower=lower,numbins=numbins)
+    ax.set_xlabel('WBT (Celsius)')
+    ax.set_ylabel('Average Frequency (Days Per Year)')
+    ax.set_title(region+': Ensemble Distributions of Max Daily WBT, 2085-95')
+    ax.legend(['Average','Member 1', 'Member 2', 'Member 3', 'Member 4', 'Member 5'], loc='upper left') 
+    fig.savefig(region+'_ensemble_hist.png')
