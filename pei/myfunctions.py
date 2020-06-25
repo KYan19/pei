@@ -110,7 +110,7 @@ def map_region(region):
     ax.add_feature(cfeature.LAND, color='lightgrey')
     
 # Function to plot temperature using cartopy
-def contour_plot(ds,region,title,cmap,borders=False):
+def contour_plot(ds,region,title,cmap,borders=False,label='$^\circ\,K$'):
     # Specify projection
     crs = ccrs.PlateCarree()
 
@@ -151,8 +151,9 @@ def contour_plot(ds,region,title,cmap,borders=False):
 
     # Set colorbar, title
     cbar = plt.colorbar(im,ax=ax,orientation='horizontal',fraction=0.05,pad=0.05)
-    cbar.set_label('$^\circ\,K$',fontsize=12)
+    cbar.set_label(label,fontsize=12)
     plt.title(title)
+    plt.savefig(region+'freq.png')
 
 # Function to generate a histogram for a data array
 def hist(ds, area, region, ax, upper=40, lower=-20, numbins = 60, denom = 50):

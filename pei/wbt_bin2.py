@@ -20,7 +20,7 @@ var = ds_adj['WBT']
 bins = np.arange(-52,35,0.1)
 
 # Loop through years
-for year in range(2070,2090):
+for year in range(2001,2070):
     # Get data for specific year
     var_year = var.where(var['time.year']==year,drop=True)
     
