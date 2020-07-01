@@ -141,9 +141,9 @@ def contour_plot(ds,region,title,cmap,borders=False,label='$^\circ\,K$'):
         ax.set_extent([xmin,xmax,ymin,ymax],crs=crs)
 
     # Add grid lines, coastlines
-    gl = ax.gridlines(draw_labels=True)
-    gl.top_labels = False
-    gl.left_labels = False
+    #gl = ax.gridlines(draw_labels=True)
+    #gl.top_labels = False
+    #gl.left_labels = False
     ax.coastlines()
     ax.add_feature(cfeature.OCEAN,zorder=10,facecolor='lightskyblue')
     
@@ -155,7 +155,6 @@ def contour_plot(ds,region,title,cmap,borders=False,label='$^\circ\,K$'):
     cbar = plt.colorbar(im,ax=ax,orientation='horizontal',fraction=0.05,pad=0.05)
     cbar.set_label(label,fontsize=12)
     plt.title(title)
-    #plt.savefig(region+'freq.png')
 
 # Function to generate a histogram for a data array
 def hist(ds, area, region, ax, upper=40, lower=-20, numbins = 60, denom = 50):
