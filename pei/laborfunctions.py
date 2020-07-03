@@ -33,12 +33,12 @@ def fill_mask(ds,masks):
     masks['Scandinavia'] = [lon.where((3<=lon)&(lon<=30),drop=True).values,lat.where((55<=lat)&(lat<=70),drop=True).values]
     lon_west = lon.where(lon>=345,drop=True)
     lon_east = lon.where(lon<=35,drop=True)
-    lon_ceur = xr.concat((lon_west,lon_east),dim='lon').values
-    masks['Central Europe'] = [lon_ceur,lat.where((43<=lat)&(lat<=55),drop=True)]
+    lon_ceur = xr.concat((lon_west,lon_east),dim='longitude').values
+    masks['Central Europe'] = [lon_ceur,lat.where((43<=lat)&(lat<=55),drop=True).values]
     lon_west = lon.where(lon>=350,drop=True)
     lon_east = lon.where(lon<=24,drop=True)
-    lon_seur = xr.concat((lon_west,lon_east),dim='lon').values
-    masks['Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=43),drop=True)]
+    lon_seur = xr.concat((lon_west,lon_east),dim='longitude').values
+    masks['Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=43),drop=True).values]
 
     masks['Northern China'] = [lon.where((75<=lon)&(lon<=135),drop=True).values,lat.where((32<=lat)&(lat<=50),drop=True).values]
     masks['Southern China'] = [lon.where((98<=lon)&(lon<=125),drop=True).values,lat.where((22<=lat)&(lat<=32),drop=True).values]
@@ -54,11 +54,11 @@ def fill_mask(ds,masks):
 
     lon_west = lon.where(lon>=340,drop=True)
     lon_east = lon.where(lon<=55,drop=True)
-    lon_cafrica = xr.concat((lon_west,lon_east),dim='lon').values
+    lon_cafrica = xr.concat((lon_west,lon_east),dim='longitude').values
     masks['Central Africa'] = [lon_cafrica,lat.where((-10<=lat)&(lat<=10),drop=True).values]
     lon_west = lon.where(lon>=340,drop=True)
     lon_east = lon.where(lon<=25,drop=True)
-    lon_nafrica = xr.concat((lon_west,lon_east),dim='lon').values
+    lon_nafrica = xr.concat((lon_west,lon_east),dim='longitude').values
     masks['Northern Africa'] = [lon_nafrica,lat.where((10<=lat)&(lat<=38),drop=True).values]
     masks['Southern Africa'] = [lon.where((9<=lon)&(lon<=52),drop=True).values,lat.where((-35<=lat)&(lat<=-10),drop=True).values]
     
@@ -79,7 +79,7 @@ def slice_region(ds, region, model):
 
 # Function to plot capacity over time for a particular region
 # Ensemble members + ensemble average
-def capacity(ds,ds_pop,region,model,ax):
+def capacity(ds,ds_pop,region,model,ax,color='royalblue'):
     # Get yearly capacity data for grid cells in region
     ds_region = slice_region(ds,region,model)
     
@@ -91,11 +91,11 @@ def capacity(ds,ds_pop,region,model,ax):
     
     # Loop through ensemble members
     for ens in capacity['ensemble']:
-        capacity.sel(ensemble=ens).plot(ax=ax,color='royalblue',alpha=0.25)
+        capacity.sel(ensemble=ens).plot(ax=ax,color=color,alpha=0.25)
 
     # Ensemble average labor capacity
     capacity_avg = capacity.mean(dim='ensemble')
-    capacity_avg.plot(ax=ax,color='royalblue',linewidth=2)
+    capacity_avg.plot(ax=ax,color=color,linewidth=2)
     ax.set_xlabel('Year')
     ax.set_ylabel('Labor Capacity, %')
     ax.set_title(region)
