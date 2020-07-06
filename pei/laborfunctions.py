@@ -100,7 +100,7 @@ def capacity(ds,ds_pop,region,model,ax,color='royalblue'):
     ax.set_ylabel('Labor Capacity, %')
     ax.set_title(region)
 
-# Function to create a contour plot of labor capacity
+# Function to create a contour plot of labor capacity (new axis)
 def contour_plot(ds,title,levels=10,cmap='Reds',label='Labor Capacity, %'):
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -115,7 +115,7 @@ def contour_plot(ds,title,levels=10,cmap='Reds',label='Labor Capacity, %'):
     Z, X = add_cyclic_point(Z,coord=X)
 
     # Create contour plot
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap)
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend='both')
 
     # Add coastlines and ocean mask
     ax.coastlines()
@@ -128,3 +128,92 @@ def contour_plot(ds,title,levels=10,cmap='Reds',label='Labor Capacity, %'):
     cbar = plt.colorbar(im,ax=ax,orientation='horizontal',fraction=0.05,pad=0.05)
     cbar.set_label(label,fontsize=12)
     plt.title(title)
+    
+# Function to create a contour plot of labor capacity (axis as parameter)
+def contour(ds,title,ax,levels=10,cmap='Reds',label='Labor Capacity, %'):
+    # Specify projection
+    crs = ccrs.PlateCarree()
+    
+    # Specify variables
+    X = ds['lon']
+    Y = ds['lat']
+    Z = ds.squeeze()
+    Z, X = add_cyclic_point(Z,coord=X)
+
+    # Create contour plot
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend='both')
+    im.cmap.set_over('darkgray')
+
+    # Add coastlines and ocean mask
+    ax.coastlines()
+    ax.add_feature(cfeature.OCEAN,zorder=10,facecolor='lightskyblue')
+    
+    # Add national boundaries
+    ax.add_feature(cfeature.BORDERS.with_scale('50m'),edgecolor='silver')
+
+    # Set title
+    ax.set_title(title,fontsize=14)
+    
+    return im
+
+# Function finds ToE as number of years before 2100
+def emergence(ds,thres=90):
+    # Array indices where capacity < threshold
+    ds_thres = (ds<thres).nonzero()
+    
+    # If non-empty, return ToE as number of years before 2100
+    if len(ds_thres[0]) > 0:
+        return 150-ds_thres[0][0].item()
+    
+    # If empty, return 0
+    return 0
+
+# Function finds number of years in 21st century after ToE
+def thres_years(ds,thres=90):
+    # Array indices where capacity < threshold
+    ds_thres = (ds<thres).nonzero()
+    
+    # If non-empty, return number of years b/w 2000 and 2100 after ToE
+    if len(ds_thres[0]) > 0:
+        return min(100,150-ds_thres[0][0].item())
+    
+    # If empty, return 0
+    return 0
+
+def spatial_toe(ds,title,thres1=90,thres2=80,thres3=70):
+    # Calculate ToE for different thresholds
+    ds_90 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres1})
+    ds_80 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres2})
+    ds_70 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres3})
+    
+    # Specify projection
+    crs = ccrs.PlateCarree()
+
+    # Create figure and axes
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,8),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.5,3,3,3]})
+    levels = [2000,2010,2020,2030,2040,2050,2060,2070,2080,2090,2099]
+
+    # Plots of ToE: earliest among ensemble members
+    contour(2100-ds_90.max(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap ='Reds_r',label='Year')
+    contour(2100-ds_80.max(dim='ensemble'),'20% Reduction',axs[0][2],levels=levels,cmap ='Reds_r',label='Year')
+    contour(2100-ds_70.max(dim='ensemble'),'30% Reduction',axs[0][3],levels=levels,cmap ='Reds_r',label='Year')
+
+    # Plots of ToE: mean among ensemble members
+    contour(2100-ds_90.mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap ='Reds_r',label='Year')
+    contour(2100-ds_80.mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap ='Reds_r',label='Year')
+    im = contour(2100-ds_70.mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap ='Reds_r',label='Year')
+
+    # Annotating text
+    axs[0][0].text(0.5,0.5,'Ensemble Earliest',fontsize=14,horizontalalignment='center',verticalalignment='center');
+    axs[0][0].set_frame_on(False)
+    axs[1][0].text(0.5,0.5,'Ensemble Mean',fontsize=14,horizontalalignment='center',verticalalignment='center');
+    axs[1][0].set_frame_on(False)
+
+    # Single colorbar for all plots
+    fig.subplots_adjust(bottom=0.2)
+    cbar_ax = fig.add_axes([0.3, 0.07, 0.4, 0.05])
+    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
+    cbar.set_label('Year',fontsize=14)
+
+    # Overall figure title
+    fig.suptitle(title,fontsize=16);
