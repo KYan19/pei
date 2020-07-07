@@ -130,7 +130,7 @@ def contour_plot(ds,title,levels=10,cmap='Reds',label='Labor Capacity, %'):
     plt.title(title)
     
 # Function to create a contour plot of labor capacity (axis as parameter)
-def contour(ds,title,ax,levels=10,cmap='Reds',label='Labor Capacity, %'):
+def contour(ds,title,ax,levels,cmap='Reds',label='Labor Capacity, %'):
     # Specify projection
     crs = ccrs.PlateCarree()
     
@@ -156,17 +156,17 @@ def contour(ds,title,ax,levels=10,cmap='Reds',label='Labor Capacity, %'):
     
     return im
 
-# Function finds ToE as number of years before 2100
-def emergence(ds,thres=90):
+# Function finds first year with labor capacity < threshold
+def emergence(ds,thres=90,start_year=1950):
     # Array indices where capacity < threshold
     ds_thres = (ds<thres).nonzero()
     
-    # If non-empty, return ToE as number of years before 2100
+    # If non-empty, index + startyear = ToE
     if len(ds_thres[0]) > 0:
-        return 150-ds_thres[0][0].item()
+        return start_year+(ds_thres[0][0].item())
     
-    # If empty, return 0
-    return 0
+    # If empty, return year after 2100
+    return 2101
 
 # Function finds number of years in 21st century after ToE
 def thres_years(ds,thres=90):
@@ -191,17 +191,17 @@ def spatial_toe(ds,title,thres1=90,thres2=80,thres3=70):
 
     # Create figure and axes
     fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,8),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.5,3,3,3]})
-    levels = [2000,2010,2020,2030,2040,2050,2060,2070,2080,2090,2099]
+    levels = np.linspace(2000,2100,21)
 
     # Plots of ToE: earliest among ensemble members
-    contour(2100-ds_90.max(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap ='Reds_r',label='Year')
-    contour(2100-ds_80.max(dim='ensemble'),'20% Reduction',axs[0][2],levels=levels,cmap ='Reds_r',label='Year')
-    contour(2100-ds_70.max(dim='ensemble'),'30% Reduction',axs[0][3],levels=levels,cmap ='Reds_r',label='Year')
+    im = contour(ds_90.min(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap ='Reds_r',label='Year')
+    contour(ds_80.min(dim='ensemble'),'20% Reduction',axs[0][2],levels=levels,cmap ='Reds_r',label='Year')
+    contour(ds_70.min(dim='ensemble'),'30% Reduction',axs[0][3],levels=levels,cmap ='Reds_r',label='Year')
 
     # Plots of ToE: mean among ensemble members
-    contour(2100-ds_90.mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap ='Reds_r',label='Year')
-    contour(2100-ds_80.mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap ='Reds_r',label='Year')
-    im = contour(2100-ds_70.mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap ='Reds_r',label='Year')
+    contour(ds_90.mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap ='Reds_r',label='Year')
+    contour(ds_80.mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap ='Reds_r',label='Year')
+    contour(ds_70.mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap ='Reds_r',label='Year')
 
     # Annotating text
     axs[0][0].text(0.5,0.5,'Ensemble Earliest',fontsize=14,horizontalalignment='center',verticalalignment='center');
