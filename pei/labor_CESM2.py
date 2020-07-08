@@ -2,7 +2,7 @@ import xarray as xr
 import numpy as np
 
 # Load WBT and temp data
-wbt = xr.open_mfdataset('../data/processed/WBTdailymax/*',combine='nested',concat_dim='ensemble',chunks={'time':1095})
+wbt = xr.open_mfdataset('../data/processed/CESM2/WBTdailymax/*',combine='nested',concat_dim='ensemble',chunks={'time':1095})
 t_ref = xr.open_mfdataset('../data/processed/CESM2/TSAdailymax/*',combine='nested',concat_dim='ensemble',chunks={'time':1095})
 
 # Calculate WBGT
