@@ -46,6 +46,8 @@ def fill_mask(ds,masks):
     masks['Northern China'] = [lon.where((75<=lon)&(lon<=135),drop=True).values,lat.where((32<=lat)&(lat<=50),drop=True).values]
     masks['Southern China'] = [lon.where((98<=lon)&(lon<=125),drop=True).values,lat.where((22<=lat)&(lat<=32),drop=True).values]
     masks['India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=30),drop=True).values]
+    masks['Northern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((23<=lat)&(lat<=30),drop=True).values]
+    masks['Southern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=23),drop=True).values]
     masks['Southeast Asia'] = [lon.where((92<=lon)&(lon<=140),drop=True).values,lat.where((0<=lat)&(lat<=25),drop=True).values]
     masks['Middle East'] = [lon.where((25<=lon)&(lon<=60),drop=True).values,lat.where((10<=lat)&(lat<=40),drop=True).values]
     masks['European Russia'] = [lon.where((43<=lon)&(lon<=70),drop=True).values,lat.where((50<=lat)&(lat<=75),drop=True).values]
@@ -131,7 +133,7 @@ def contour_plot(ds,title,levels=10,cmap='Reds',label='Labor Capacity, %'):
     cbar.set_label(label,fontsize=12)
     plt.title(title)
     
-def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray'):
+def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray',extend='both'):
     '''Function to create a contour plot of labor capacity (axis as parameter)'''
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -147,7 +149,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     N = colormap.N
 
     # Create contour plot
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend='both')
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend=extend)
     
     # Set over/under colors for cmap
     if over == None:

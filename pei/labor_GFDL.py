@@ -15,8 +15,8 @@ wbgt = wbgt.where(wbgt<33,33)
 # Convert from WBGT to capacity
 cap_daily = 100 - 25*((wbgt-25)**(2/3))
 
-# Go from daily capacity to annual capacity
-cap_yearly = cap_daily.resample(time='1Y').mean()
+# Go from daily capacity to monthly capacity
+cap_monthly = cap_daily.resample(time='1M').mean()
 
 # Save as data file
-cap_yearly.to_netcdf('../data/processed/GFDL/labor_mean_ens1-3.nc')
+cap_monthly.to_netcdf('../data/processed/GFDL/Monthly_Capacity/monthly_capacity_ens1-3_1950-2100.nc')
