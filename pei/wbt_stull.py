@@ -2,12 +2,12 @@ import xarray as xr
 import numpy as np
 from pei import thermodynamics as td
 
-ensembles = ['113','114','115']
+ensembles = range(114,131)
 rootdir = '/local/ss23/GFDL_LEs/ATM/RCP85/'
 
 for ens in ensembles:
     # Point to model data
-    suffix = '.rcp85.ens' + ens + '.1950_2100.nc'
+    suffix = '.rcp85.ens' + str(ens) + '.1950_2100.nc'
     variables = ['sphum_k24','ps','t_ref']
     ds = xr.Dataset()
     for var in variables:
