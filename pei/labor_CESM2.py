@@ -2,13 +2,13 @@ import xarray as xr
 import numpy as np
 
 # Load WBT data
-paths_wbt = ['../data/processed/CESM2/WBTdailymean/WBTens001.nc','../data/processed/CESM2/WBTdailymean/WBTens002.nc','../data/processed/CESM2/WBTdailymean/WBTens003.nc',
-        '../data/processed/CESM2/WBTdailymean/WBTens004.nc','../data/processed/CESM2/WBTdailymean/WBTens005.nc']
+paths_wbt = ['../data/processed/CESM2/WBTdailymean/WBTens006.nc','../data/processed/CESM2/WBTdailymean/WBTens007.nc','../data/processed/CESM2/WBTdailymean/WBTens008.nc',
+        '../data/processed/CESM2/WBTdailymean/WBTens009.nc','../data/processed/CESM2/WBTdailymean/WBTens010.nc']
 wbt = xr.open_mfdataset(paths_wbt,combine='nested',concat_dim='ensemble',chunks={'time':1095})
 
 # Load temp data
-paths_tsa = ['../data/processed/CESM2/TSAdailymean/TSAens001.nc','../data/processed/CESM2/TSAdailymean/TSAens002.nc','../data/processed/CESM2/TSAdailymean/TSAens003.nc',
-        '../data/processed/CESM2/TSAdailymean/TSAens004.nc','../data/processed/CESM2/TSAdailymean/TSAens005.nc']
+paths_tsa = ['../data/processed/CESM2/TSAdailymean/TSAens006.nc','../data/processed/CESM2/TSAdailymean/TSAens007.nc','../data/processed/CESM2/TSAdailymean/TSAens008.nc',
+        '../data/processed/CESM2/TSAdailymean/TSAens009.nc','../data/processed/CESM2/TSAdailymean/TSAens010.nc']
 t_ref = xr.open_mfdataset(paths_tsa,combine='nested',concat_dim='ensemble',chunks={'time':1095})
 
 # Calculate WBGT
@@ -25,4 +25,4 @@ cap_daily = 100 - 25*((wbgt-25)**(2/3))
 cap_monthly = cap_daily.resample(time='1M').mean()
 
 # Save as data file
-cap_monthly.to_netcdf('../data/processed/CESM2/Monthly_Capacity/monthly_capacity_ens1-5_1980-2100.nc')
+cap_monthly.to_netcdf('../data/processed/CESM2/Monthly_Capacity/monthly_capacity_ens6-10_1980-2100.nc')

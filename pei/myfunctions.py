@@ -196,3 +196,319 @@ def ensemble_hist(ds,area,region,upper=40,lower=-20,numbins=60):
     ax.set_title(region+': Ensemble Distributions of Max Daily WBT, 2085-95')
     ax.legend(['Average','Member 1', 'Member 2', 'Member 3', 'Member 4', 'Member 5'], loc='upper left') 
     fig.savefig(region+'_ensemble_hist.png')
+    
+# OLD EMERGENCE FUNCTIONS -- FOR ANNUAL LABOR CAPACITY; SINCE REPLACED BY MONTHLY
+def capacity(ds,ds_pop,region,model,ax,color='royalblue'):
+    '''Function to plot capacity over time for a particular region
+        Ensemble members + ensemble average'''
+    # Get yearly capacity data for grid cells in region
+    ds_region = slice_region(ds,region,model)
+    
+    # Get population for grid cells
+    pop_region = slice_region(ds_pop,region,model)
+    
+    # Calculate total area-weighted capacity per year
+    capacity = ds_region.weighted(pop_region).mean(['lon','lat'])
+    
+    # Plot individual ensemble members
+    capacity.plot.line(hue='ensemble',color=color,alpha=0.25,ax=ax,add_legend=False)
+
+    # Ensemble average labor capacity
+    capacity_avg = capacity.mean(dim='ensemble')
+    capacity_avg.plot(ax=ax,color=color,linewidth=2)
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Labor Capacity, %')
+    ax.set_title(region)
+    
+def emergence(ds,start_year,thres):
+    '''Function finds first year with labor capacity < threshold'''
+    # Array indices where capacity < threshold
+    ds_thres = (ds<thres).nonzero()
+    
+    # If non-empty, index + startyear = ToE
+    if len(ds_thres[0]) > 0:
+        return start_year+(ds_thres[0][0].item())
+    
+    # If empty, return year after 2100
+    return 2101
+
+def thres_years(ds,thres=90,length=150):
+    '''Function finds number of years in 21st century after ToE'''
+    # Array indices where capacity < threshold
+    ds_thres = (ds<thres).nonzero()
+    
+    # If non-empty, return number of years b/w 2000 and 2100 after ToE
+    # Length refers to number of years in dataset's time dimension
+    if len(ds_thres[0]) > 0:
+        return min(100,length-ds_thres[0][0].item())
+    
+    # If empty, return 0
+    return 0
+
+def spatial_toe(ds,title,thres1=90,thres2=80,thres3=70):
+    '''Plot spatial map of ToE for all grid cells (global)'''
+    # Calculate ToE for different thresholds
+    start_year = ds['time.year'][0].item()
+    ds_90 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres1,'start_year':start_year})
+    ds_80 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres2,'start_year':start_year})
+    ds_70 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres3,'start_year':start_year})
+    
+    # Specify projection
+    crs = ccrs.PlateCarree()
+
+    # Create figure and axes
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,8),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.5,3,3,3]})
+    levels = np.linspace(2000,2100,21)
+    cmap = 'magma'
+
+    # Plots of ToE: earliest among ensemble members
+    im = contour(ds_90.min(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year')
+    contour(ds_80.min(dim='ensemble'),'20% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year')
+    contour(ds_70.min(dim='ensemble'),'30% Reduction',axs[0][3],levels=levels,cmap =cmap,label='Year')
+
+    # Plots of ToE: mean among ensemble members
+    contour(ds_90.mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap =cmap,label='Year')
+    scatter(ds_90,axs[1][1])
+    contour(ds_80.mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap =cmap,label='Year')
+    scatter(ds_80,axs[1][2])
+    contour(ds_70.mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap =cmap,label='Year')
+    scatter(ds_70,axs[1][3])
+
+    # Annotating text
+    axs[0][0].text(0.5,0.5,'Ensemble Earliest',fontsize=14,horizontalalignment='center',verticalalignment='center');
+    axs[0][0].set_frame_on(False)
+    axs[1][0].text(0.5,0.5,'Ensemble Mean',fontsize=14,horizontalalignment='center',verticalalignment='center');
+    axs[1][0].set_frame_on(False)
+
+    # Single colorbar for all plots
+    fig.subplots_adjust(bottom=0.2)
+    cbar_ax = fig.add_axes([0.3, 0.07, 0.4, 0.05])
+    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
+    cbar.set_label('Year',fontsize=14)
+
+    # Overall figure title
+    fig.suptitle(title,fontsize=16);
+    
+def spatial_toe_diff(ds,title,thres1=90,thres2=80,thres3=70):
+    '''Plot ToE range for all grid cells (global)'''
+    start_year = ds['time.year'][0].item()
+    # Calculate ToE for different thresholds
+    ds_90 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres1,'start_year':start_year})
+    ds_80 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres2,'start_year':start_year})
+    ds_70 = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres3,'start_year':start_year})
+    
+    # Specify projection
+    crs = ccrs.PlateCarree()
+
+    # Create figure and axes
+    fig, axs = plt.subplots(ncols=3,figsize=(20,5),subplot_kw={'projection':crs})
+    levels = np.linspace(1,60,60)
+    cmap = 'YlOrBr'
+
+    # Plots of ToE range: max ToE - min ToE
+    im = contour(ds_90.max(dim='ensemble')-ds_90.min(dim='ensemble'),'10% Reduction',axs[0],levels=levels,cmap =cmap,label='Year',under='white',over=None)
+    contour(ds_80.max(dim='ensemble')-ds_80.min(dim='ensemble'),'20% Reduction',axs[1],levels=levels,cmap =cmap,label='Year',under='white',over=None)
+    contour(ds_70.max(dim='ensemble')-ds_70.min(dim='ensemble'),'30% Reduction',axs[2],levels=levels,cmap =cmap,label='Year',under='white',over=None)
+
+    # Single colorbar for all plots
+    fig.subplots_adjust(bottom=0.2)
+    cbar_ax = fig.add_axes([0.3, 0.15, 0.4, 0.05])
+    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
+    cbar.set_label('Years',fontsize=14)
+
+    # Overall figure title
+    fig.suptitle(title,fontsize=16);
+    
+def average_toe_bar(ds,ds_pop,model,title):
+    '''Bar graph showing portion of 21st century spent after ToE
+        Uses average ToE across grid cells in regions'''
+    length = len(ds['time.year'].values) - 1
+    # Calculate # of >ToE years for different thresholds
+    ds_90 = xr.apply_ufunc(thres_years,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':90,'length':length})
+    ds_80 = xr.apply_ufunc(thres_years,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':80,'length':length})
+    ds_70 = xr.apply_ufunc(thres_years,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':70,'length':length})
+    
+    # Regions to plot
+    regions = ['India','Central America','Northern South America','Southeast Asia','Central Africa','Northern Oceania']
+
+    fig, ax = plt.subplots(figsize=(20,10))
+
+    # Location of region labels; width of bars
+    locs = np.arange(len(regions))
+    width = 0.2
+
+    for x in locs:
+        region = regions[x]
+        # Get number of >ToE years for grid cells in region
+        ds_90_region = slice_region(ds_90,region,model)
+        ds_80_region = slice_region(ds_80,region,model)
+        ds_70_region = slice_region(ds_70,region,model)
+        pop_region = slice_region(ds_pop,region,model)
+
+        # Population-weighted average number of >ToE years
+        years_90 = ds_90_region.weighted(pop_region).mean(['lon','lat'])
+        years_80 = ds_80_region.weighted(pop_region).mean(['lon','lat'])
+        years_70 = ds_70_region.weighted(pop_region).mean(['lon','lat'])
+
+        # [[Lower range],[upper range]] -- range of values across ensemble members
+        errors_90 = [[years_90.max('ensemble')-years_90.mean('ensemble')],[years_90.mean('ensemble')-years_90.min('ensemble')]]
+        ax.bar(x - width, -years_90.mean('ensemble'), width, label='10%', bottom=2100, yerr=errors_90, error_kw={'capsize':5}, color='royalblue')
+        errors_80 = [[years_80.max('ensemble')-years_80.mean('ensemble')],[years_80.mean('ensemble')-years_80.min('ensemble')]]
+        ax.bar(x, -years_80.mean('ensemble'), width, label='20%', bottom=2100, yerr=errors_80, error_kw={'capsize':5}, color='green')
+        errors_70 = [[years_70.max('ensemble')-years_70.mean('ensemble')],[years_70.mean('ensemble')-years_70.min('ensemble')]]
+        ax.bar(x + width, -years_70.mean('ensemble'), width, label='30%',bottom=2100, yerr=errors_70, error_kw={'capsize':5}, color='orange')
+
+    # Region labels on top
+    ax.xaxis.set_tick_params(labeltop=True,labelbottom=False,bottom=False)
+    ax.set_xticks(locs)
+    ax.set_xticklabels(regions)
+    ax.set_ylim([2000,2100]);
+
+    # Legend for different thresholds
+    blue_patch = mpatches.Patch(color='royalblue', label='10% reduction')
+    green_patch = mpatches.Patch(color='green', label='20% reduction')
+    orange_patch = mpatches.Patch(color='orange', label='30% reduction')
+    ax.legend(handles=[blue_patch,green_patch,orange_patch], loc=(0.25,0.01));
+    ax.set_title(title,fontsize=14);
+    
+def toe_bar(ds,ds_pop,model,title):
+    '''Bar graph showing portion of 21st century spent after ToE
+        Uses ToE for average labor capacity across grid cells in regions'''
+    
+    # Regions to plot
+    regions = ['India','Central America','Northern South America','Southeast Asia','Central Africa','Northern Oceania']
+
+    fig, ax = plt.subplots(figsize=(20,10))
+
+    # Location of region labels; width of bars
+    locs = np.arange(len(regions))
+    width = 0.2
+
+    for x in locs:
+        region = regions[x]
+
+        # Population-weighted regional labor capacity
+        ds_region = slice_region(ds,region,model)
+        pop_region = slice_region(ds_pop,region,model)
+        capacity = ds_region.weighted(pop_region).mean(['lat','lon'])
+        
+        length = len(ds['time.year'].values) - 1
+        # Number of >ToE years using regional average
+        years_90 = xr.apply_ufunc(thres_years,capacity['capacity'],input_core_dims=[['time']],vectorize=True,kwargs={'thres':90,'length':length})
+        years_80 = xr.apply_ufunc(thres_years,capacity['capacity'],input_core_dims=[['time']],vectorize=True,kwargs={'thres':80,'length':length})
+        years_70 = xr.apply_ufunc(thres_years,capacity['capacity'],input_core_dims=[['time']],vectorize=True,kwargs={'thres':70,'length':length})
+
+        # [[Lower range],[upper range]] -- range of values across ensemble members
+        errors_90 = [[years_90.max('ensemble')-years_90.mean('ensemble')],[years_90.mean('ensemble')-years_90.min('ensemble')]]
+        ax.bar(x - width, -years_90.mean('ensemble'), width, label='10%', bottom=2100, yerr=errors_90, error_kw={'capsize':5}, color='royalblue')
+        errors_80 = [[years_80.max('ensemble')-years_80.mean('ensemble')],[years_80.mean('ensemble')-years_80.min('ensemble')]]
+        ax.bar(x, -years_80.mean('ensemble'), width, label='20%', bottom=2100, yerr=errors_80, error_kw={'capsize':5}, color='green')
+        errors_70 = [[years_70.max('ensemble')-years_70.mean('ensemble')],[years_70.mean('ensemble')-years_70.min('ensemble')]]
+        ax.bar(x + width, -years_70.mean('ensemble'), width, label='30%',bottom=2100, yerr=errors_70, error_kw={'capsize':5}, color='orange')
+
+    # Region labels on top
+    ax.xaxis.set_tick_params(labeltop=True,labelbottom=False,bottom=False)
+    ax.set_xticks(locs)
+    ax.set_xticklabels(regions)
+    ax.set_ylim([2000,2100]);
+
+    # Legend for different thresholds
+    blue_patch = mpatches.Patch(color='royalblue', label='10% reduction')
+    green_patch = mpatches.Patch(color='green', label='20% reduction')
+    orange_patch = mpatches.Patch(color='orange', label='30% reduction')
+    ax.legend(handles=[blue_patch,green_patch,orange_patch], loc=(0.42,0.01));
+    ax.set_title(title,fontsize=14);
+    
+def area_emerge(ds,ds_area,thres,start_year):
+    '''Find area that has emerged'''
+
+    # Get ToE for all grid cells
+    ds_toe = xr.apply_ufunc(emergence,ds,input_core_dims=[['time']],vectorize=True,kwargs={'thres':thres,'start_year':start_year})
+    
+    # DataArray of years
+    year = xr.ones_like(ds)*ds['time.year']
+    
+    # Is ToE <= current year? Sum up area for grid cells marked as True
+    ds_emerged = ((ds_toe<=year)*ds_area).sum(['lat','lon'])
+    
+    # Return area emerged
+    return ds_emerged
+    
+def area_emerge_plot(ds,ds_area,title,ylabel,ax):
+    '''Plot time series for area emerged'''
+    # Calculate total area
+    total_area = ds_area.sum(['lat','lon'])
+    
+    start_year = ds['time.year'][0].item()
+    # Calculate fraction of area that has emerged
+    ds_90 = area_emerge(ds,ds_area,90,start_year)/total_area
+    ds_80 = area_emerge(ds,ds_area,80,start_year)/total_area
+    ds_70 = area_emerge(ds,ds_area,70,start_year)/total_area
+    
+    # Plot ensemble members + ensemble average for 90% threshold
+    ds_90.plot.line(hue='ensemble',ax=ax,color='royalblue',alpha=0.25,add_legend=False)
+    ds_90.mean(dim='ensemble').plot(ax=ax,color='royalblue')
+    
+    # Plot ensemble members + ensemble average for 80% threshold
+    ds_80.plot.line(hue='ensemble',ax=ax,color='green',alpha=0.25,add_legend=False)
+    ds_80.mean(dim='ensemble').plot(ax=ax,color='green')
+    
+    # Plot ensemble members + ensemble average for 70% threshold
+    ds_70.plot.line(hue='ensemble',ax=ax,color='orange',alpha=0.25,add_legend=False)
+    ds_70.mean(dim='ensemble').plot(ax=ax,color='orange')
+    
+    # Set labels, limits
+    ax.set_xlabel('Year')
+    ax.set_ylabel(ylabel)
+    ax.set_ylim([0,1])
+    ax.set_title(title)
+    
+    # Set legend
+    blue_line = mlines.Line2D([], [], color='royalblue', label='10% reduction')
+    green_line = mlines.Line2D([], [], color='green', label='20% reduction')
+    orange_line = mlines.Line2D([], [], color='orange', label='30% reduction')
+    ax.legend(handles=[blue_line,green_line,orange_line]);
+
+def spatial_ensemble_esm2m(ds,title):
+    # Specify projection
+    crs = ccrs.PlateCarree()
+
+    # Create figure and axes
+    fig, axs = plt.subplots(ncols=3,figsize=(20,4),subplot_kw={'projection':crs})
+    levels = np.linspace(1950,2100,31)
+
+    cmap = 'magma'
+    im = contour(ds.isel(ensemble=0),'Member 0',axs[0],levels=levels,cmap =cmap,label='Year')
+    contour(ds.isel(ensemble=1),'Member 1',axs[1],levels=levels,cmap =cmap,label='Year')
+    contour(ds.isel(ensemble=2),'Member 2',axs[2],levels=levels,cmap =cmap,label='Year')
+
+    # Single colorbar for all plots
+    fig.subplots_adjust(bottom=0.2)
+    cbar_ax = fig.add_axes([0.3, 0.07, 0.4, 0.05])
+    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
+    cbar.set_label('Year',fontsize=14)
+    
+    fig.suptitle(title,fontsize=16)
+
+def spatial_ensemble_cesm2(ds,title):
+    # Specify projection
+    crs = ccrs.PlateCarree()
+
+    # Create figure and axes
+    fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(20,8),subplot_kw={'projection':crs})
+    levels = np.linspace(1980,2100,25)
+
+    cmap = 'magma'
+    im = contour(ds.isel(ensemble=0),'Member 0',axs[0][0],levels=levels,cmap =cmap,label='Year')
+    contour(ds.isel(ensemble=1),'Member 1',axs[0][1],levels=levels,cmap =cmap,label='Year')
+    contour(ds.isel(ensemble=2),'Member 2',axs[0][2],levels=levels,cmap =cmap,label='Year')
+    contour(ds.isel(ensemble=2),'Member 3',axs[1][0],levels=levels,cmap =cmap,label='Year')
+    contour(ds.isel(ensemble=2),'Member 4',axs[1][1],levels=levels,cmap =cmap,label='Year')
+
+    # Single colorbar for all plots
+    fig.subplots_adjust(bottom=0.2)
+    cbar_ax = fig.add_axes([0.3, 0.07, 0.4, 0.05])
+    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
+    cbar.set_label('Year',fontsize=14)
+    
+    fig.suptitle(title,fontsize=16)
