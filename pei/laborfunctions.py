@@ -97,7 +97,7 @@ def contour_plot(ds,title,levels=10,cmap='Reds',label='Labor Capacity, %'):
     Z, X = add_cyclic_point(Z,coord=X)
 
     # Create contour plot
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend='both')
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap)
 
     # Add coastlines and ocean mask
     ax.coastlines()
@@ -170,7 +170,7 @@ def scatter(ds,ax):
     
     # Mark grid cells
     crs = ccrs.PlateCarree()
-    ax.scatter(X,Y,transform=crs,zorder=1,color='black',marker='.',s=2)
+    ax.scatter(X,Y,transform=crs,zorder=1,marker='o',s=0.1,facecolors='none', edgecolors='black',alpha=0.75)
     
 def calc_baseline(ds):
     '''Calculates 1980-2000 baseline capacity, by month (mean - 2*std)'''
@@ -192,10 +192,45 @@ def emergence(ds,start_year):
     
     # If non-empty, index + startyear = ToE
     if len(ds_thres[0]) > 0:
-        return start_year+(ds_thres[0][0].item())
+        return start_year+ds_thres[0][0].item()
     
     # If empty, return year after 2100
     return 2101
+
+def emergence2(ds,start_year):
+    '''Function finds first year with labor capacity < threshold'''
+    # Array indices where capacity < threshold
+    ds_thres = ds.nonzero()
+    
+    # If non-empty, index + startyear = ToE
+    if len(ds_thres[0]) > 0:
+        return start_year+int(ds_thres[0][0].item()/4)
+    
+    # If empty, return year after 2100
+    return 2101
+
+def toe2(ds,ds_base,labor_thres):
+    '''Return dataset of ToEs based on various inputted thresholds'''
+    # First year of the dataset
+    start_year = ds['time.year'][0].item()
+
+    # Dataset for ToEs
+    ds_toe = xr.Dataset()
+
+    # Loop through inputted thresholds
+    for thres in labor_thres:
+        # See if each month's capacity is below threshold
+        ds_thres = ds < (thres*ds_base.sel(month=ds['time.month']))
+        
+        # Sum by (freq_thres)-month chunks
+        ds_chunk = ds_thres.resample(time='Q-NOV').sum()
+        
+        # Find occurrences of (freq-thres) consecutive hot months
+        ds_chunk = (ds_chunk == 3)
+        
+        # Get first year with enough months below threshold
+        ds_toe[str(thres)] = xr.apply_ufunc(emergence2,ds_chunk,input_core_dims=[['time']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
+    return ds_toe
 
 def toe(ds,ds_base,labor_thres,freq_thres):
     '''Return dataset of ToEs based on various inputted thresholds'''
