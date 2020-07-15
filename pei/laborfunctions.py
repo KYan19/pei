@@ -152,7 +152,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     return im
 
-def scatter(ds,ax):
+def scatter(ds,ax,s,linewidths):
     '''Place markers over grid cells that emerge in some ensemble members but not all'''
     # Number of ensemble members
     ens_num = len(ds['ensemble'].values)
@@ -170,7 +170,7 @@ def scatter(ds,ax):
     
     # Mark grid cells
     crs = ccrs.PlateCarree()
-    ax.scatter(X,Y,transform=crs,zorder=1,marker='o',s=0.1,facecolors='none', edgecolors='black',alpha=0.75)
+    ax.scatter(X,Y,transform=crs,zorder=1,marker='o',s=s,facecolors='none', edgecolors='black', linewidths=linewidths)
     
 def calc_baseline(ds):
     '''Calculates 1980-2000 baseline capacity, by month (mean - 2*std)'''
@@ -197,43 +197,52 @@ def emergence(ds,start_year):
     # If empty, return year after 2100
     return 2101
 
-def emergence2(ds,start_year):
-    '''Function finds first year with labor capacity < threshold'''
-    # Array indices where capacity < threshold
-    ds_thres = ds.nonzero()
+def emergence_summer(ds,start_year):
+    '''Function finds first year with entire summer season below threshold'''
+    # Array indices where all three summer months are below threshold
+    ds_thres = (ds==3).nonzero()
     
     # If non-empty, index + startyear = ToE
     if len(ds_thres[0]) > 0:
-        return start_year+int(ds_thres[0][0].item()/4)
+        return start_year+ds_thres[0][0].item()
     
     # If empty, return year after 2100
     return 2101
 
-def toe2(ds,ds_base,labor_thres):
-    '''Return dataset of ToEs based on various inputted thresholds'''
+def toe_summer(ds,ds_base,labor_thres):
+    '''Return dataset of ToEs based on various inputted thresholds (all 3 summer months below threshold)'''
     # First year of the dataset
     start_year = ds['time.year'][0].item()
 
     # Dataset for ToEs
     ds_toe = xr.Dataset()
-
+    
     # Loop through inputted thresholds
     for thres in labor_thres:
-        # See if each month's capacity is below threshold
+        # Check if capacity is below threshold for each month
         ds_thres = ds < (thres*ds_base.sel(month=ds['time.month']))
         
-        # Sum by (freq_thres)-month chunks
-        ds_chunk = ds_thres.resample(time='Q-NOV').sum()
+        # Split into seasons and sum number of truth values
+        # Resampled month index = last month in season
+        ds_thres = ds_thres.resample(time='Q-NOV').sum()
         
-        # Find occurrences of (freq-thres) consecutive hot months
-        ds_chunk = (ds_chunk == 3)
+        # Split into hemispheres and isolate summer season (JJA Northern; DJF Southern)
+        ds_north = ds_thres.where(ds['lat']>0,drop=True)
+        ds_north = ds_north.sel(time=(ds_north['time.month']==8))
+
+        ds_south = ds_thres.where(ds['lat']<0,drop=True)
+        ds_south = ds_south.sel(time=(ds_south['time.month']==2))
         
-        # Get first year with enough months below threshold
-        ds_toe[str(thres)] = xr.apply_ufunc(emergence2,ds_chunk,input_core_dims=[['time']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
+        # Get first year with entire summer season below threshold
+        north_toe = xr.apply_ufunc(emergence_summer,ds_north,input_core_dims=[['time']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
+        south_toe = xr.apply_ufunc(emergence_summer,ds_south,input_core_dims=[['time']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
+        
+        # Combine data for two hemispheres
+        ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
     return ds_toe
 
 def toe(ds,ds_base,labor_thres,freq_thres):
-    '''Return dataset of ToEs based on various inputted thresholds'''
+    '''Return dataset of ToEs based on various inputted thresholds (any 3 months below threshold)'''
     # First year of the dataset
     start_year = ds['time.year'][0].item()
 
@@ -273,47 +282,49 @@ def spatial_toe(ds,title):
     contour(ds['0.7'].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max')
 
     # Annotating text
-    axs[0][0].text(0.5,0.5,'Ensemble Earliest',fontsize=14,horizontalalignment='center',verticalalignment='center');
+    axs[0][0].text(0.5,0.5,'Ensemble\n Earliest',fontsize=14,horizontalalignment='right',verticalalignment='center');
     axs[0][0].set_frame_on(False)
-    axs[1][0].text(0.5,0.5,'Ensemble Mean',fontsize=14,horizontalalignment='center',verticalalignment='center');
+    axs[1][0].text(0.5,0.5,'Ensemble\n Mean',fontsize=14,horizontalalignment='right',verticalalignment='center');
     axs[1][0].set_frame_on(False)
 
     # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
-    cbar_ax = fig.add_axes([0.3, 0.07, 0.4, 0.05])
+    cbar_ax = fig.add_axes([0.3, 0.1, 0.4, 0.05])
     cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
     cbar.set_label('Year',fontsize=14)
+    fig.subplots_adjust(wspace=.05,hspace=.05)
 
     # Overall figure title
     fig.suptitle(title,fontsize=16);
     
-def spatial_toe_diff(ds,title):
+def spatial_toe_diff(ds,title,s=0.3,linewidths=0.4):
     '''Plot ToE range for all grid cells (global)'''
     # Specify projection
     crs = ccrs.PlateCarree()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=3,figsize=(20,5),subplot_kw={'projection':crs})
+    fig, axs = plt.subplots(ncols=3,figsize=(30,6),subplot_kw={'projection':crs})
     levels = np.linspace(1,60,60)
     cmap = 'YlOrBr'
 
     # Plots of ToE range: max ToE - min ToE
     im = contour(ds['0.9'].max(dim='ensemble')-ds['0.9'].min(dim='ensemble'),'10% Reduction',axs[0],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.9'],axs[0])
+    scatter(ds['0.9'],axs[0],s,linewidths)
     contour(ds['0.8'].max(dim='ensemble')-ds['0.8'].min(dim='ensemble'),'20% Reduction',axs[1],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.8'],axs[1])
+    scatter(ds['0.8'],axs[1],s,linewidths)
     contour(ds['0.7'].max(dim='ensemble')-ds['0.7'].min(dim='ensemble'),'30% Reduction',axs[2],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.7'],axs[2])
+    scatter(ds['0.7'],axs[2],s,linewidths)
 
     # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
-    cbar_ax = fig.add_axes([0.3, 0.15, 0.4, 0.05])
+    cbar_ax = fig.add_axes([0.3, 0.1, 0.4, 0.05])
     cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
     cbar.set_label('Years',fontsize=14)
+    fig.subplots_adjust(wspace=.05,hspace=.2)
 
     # Overall figure title
     fig.suptitle(title,fontsize=16);
-
+    
 def average_toe_bar(ds,ds_pop,model,title):
     '''Bar graph showing portion of 21st century spent after ToE
         Uses average ToE across grid cells in regions'''
