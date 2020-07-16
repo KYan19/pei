@@ -241,7 +241,7 @@ def toe_summer(ds,ds_base,labor_thres):
         ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
     return ds_toe
 
-def toe(ds,ds_base,labor_thres,freq_thres):
+def toe(ds,ds_base,labor_thres):
     '''Return dataset of ToEs based on various inputted thresholds (any 3 months below threshold)'''
     # First year of the dataset
     start_year = ds['time.year'][0].item()
@@ -255,7 +255,7 @@ def toe(ds,ds_base,labor_thres,freq_thres):
         ds_thres = ds < (thres*ds_base.sel(month=ds['time.month']))
         
         # See if enough months in each year are below threshold
-        ds_thres = ds_thres.groupby('time.year').sum() >= freq_thres
+        ds_thres = ds_thres.groupby('time.year').sum() >= 3
         
         # Get first year with enough months below threshold
         ds_toe[str(thres)] = xr.apply_ufunc(emergence,ds_thres,input_core_dims=[['year']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
