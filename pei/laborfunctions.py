@@ -148,7 +148,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     ax.add_feature(cfeature.BORDERS.with_scale('50m'),edgecolor='silver')
 
     # Set title
-    ax.set_title(title,fontsize=14)
+    ax.set_title(title)
     
     return im
 
@@ -170,7 +170,7 @@ def scatter(ds,ax,s,linewidths):
     
     # Mark grid cells
     crs = ccrs.PlateCarree()
-    ax.scatter(X,Y,transform=crs,zorder=1,marker='o',s=s,facecolors='none', edgecolors='black', linewidths=linewidths)
+    ax.scatter(X,Y,transform=crs,zorder=1,s=s,facecolors='none', edgecolors='black', linewidths=linewidths)
     
 def calc_baseline(ds):
     '''Calculates 1980-2000 baseline capacity, by month (mean - 2*std)'''
@@ -267,7 +267,7 @@ def spatial_toe(ds,title):
     crs = ccrs.PlateCarree()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,8),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.5,3,3,3]})
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,8),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,3]})
     levels = np.linspace(2000,2100,21)
     cmap = 'magma'
 
@@ -292,10 +292,12 @@ def spatial_toe(ds,title):
     cbar_ax = fig.add_axes([0.3, 0.1, 0.4, 0.05])
     cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
     cbar.set_label('Year',fontsize=14)
+    cbar.set_ticks(np.linspace(2000,2110,12))
+    cbar.set_ticklabels(['2000','2010','2020','2030','2040','2050','2060','2070','2080','2090','2100+'])
     fig.subplots_adjust(wspace=.05,hspace=.05)
 
     # Overall figure title
-    fig.suptitle(title,fontsize=16);
+    fig.suptitle(title);
     
 def spatial_toe_diff(ds,title,s=0.3,linewidths=0.4):
     '''Plot ToE range for all grid cells (global)'''
@@ -303,8 +305,8 @@ def spatial_toe_diff(ds,title,s=0.3,linewidths=0.4):
     crs = ccrs.PlateCarree()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=3,figsize=(30,6),subplot_kw={'projection':crs})
-    levels = np.linspace(1,60,60)
+    fig, axs = plt.subplots(ncols=3,figsize=(22,5),subplot_kw={'projection':crs})
+    levels = np.linspace(1,60,30)
     cmap = 'YlOrBr'
 
     # Plots of ToE range: max ToE - min ToE
@@ -317,13 +319,14 @@ def spatial_toe_diff(ds,title,s=0.3,linewidths=0.4):
 
     # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
-    cbar_ax = fig.add_axes([0.3, 0.1, 0.4, 0.05])
+    cbar_ax = fig.add_axes([0.3, 0.1, 0.4, 0.075])
     cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
     cbar.set_label('Years',fontsize=14)
-    fig.subplots_adjust(wspace=.05,hspace=.2)
+    cbar.set_ticks([1,10,20,30,40,50,60])
+    fig.subplots_adjust(wspace=.05,hspace=.05)
 
     # Overall figure title
-    fig.suptitle(title,fontsize=16);
+    fig.suptitle(title);
     
 def average_toe_bar(ds,ds_pop,model,title):
     '''Bar graph showing portion of 21st century spent after ToE
