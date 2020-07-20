@@ -82,6 +82,35 @@ def slice_region(ds, region, model):
     else:
         raise ValueError('Model name not valid')
 
+def map_region(region,model):
+    # Specify projection
+    crs = ccrs.PlateCarree()
+    
+    fig, ax = plt.subplots(subplot_kw={'projection':crs})
+    
+    if model == 'GFDL':
+        masks = masks_GFDL
+    elif model == 'CESM2':
+        masks = masks_CESM2
+    else:
+        raise ValueError('Model name not valid')
+    
+    # Get longitude and latitude bounds for mask
+    if region != 'Global':
+        xmin = masks[region][0][0]
+        if xmin > 180:
+            xmin -= 360
+        xmax = masks[region][0][-1]
+        if xmax > 180:
+            xmax -= 360
+        ymin = masks[region][1][0]
+        ymax = masks[region][1][-1]
+        ax.set_extent([xmin,xmax,ymin,ymax],crs=crs)
+    ax.coastlines()
+    ax.add_feature(cfeature.BORDERS.with_scale('50m'))
+    ax.add_feature(cfeature.OCEAN, color='skyblue')
+    ax.add_feature(cfeature.LAND, color='lightgrey')
+
 def contour_plot(ds,title,levels=10,cmap='Reds',label='Labor Capacity, %'):
     '''Function to create a contour plot of labor capacity (new axis)'''
     # Specify projection
