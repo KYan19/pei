@@ -30,7 +30,7 @@ def fill_mask(ds,masks):
     masks['Central North America'] = [lon.where((230<=lon)&(lon<=310),drop=True).values,lat.where((35<=lat)&(lat<=45),drop=True).values]
     masks['Southern North America'] = [lon.where((230<=lon)&(lon<=300),drop=True).values,lat.where((20<=lat)&(lat<=35),drop=True).values]
     masks['Central America'] = [lon.where((250<=lon)&(lon<=315),drop=True).values,lat.where((7<=lat)&(lat<=20),drop=True).values]
-    masks['Northern South America'] = [lon.where((270<=lon)&(lon<=330),drop=True).values,lat.where((-23.5<=lat)&(lat<=7),drop=True).values]
+    masks['Northern South America'] = [lon.where((270<=lon)&(lon<=330),drop=True).values,lat.where((-23.5<=lat)&(lat<=12),drop=True).values]
     masks['Southern South America'] = [lon.where((270<=lon)&(lon<=330),drop=True).values,lat.where((-57<=lat)&(lat<=-23.5),drop=True).values]
 
     masks['Scandinavia'] = [lon.where((3<=lon)&(lon<=30),drop=True).values,lat.where((55<=lat)&(lat<=70),drop=True).values]
@@ -48,24 +48,24 @@ def fill_mask(ds,masks):
     masks['India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=30),drop=True).values]
     masks['Northern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((23<=lat)&(lat<=30),drop=True).values]
     masks['Southern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=23),drop=True).values]
-    masks['Southeast Asia'] = [lon.where((92<=lon)&(lon<=140),drop=True).values,lat.where((0<=lat)&(lat<=25),drop=True).values]
+    masks['Southeast Asia'] = [lon.where((92<=lon)&(lon<=130),drop=True).values,lat.where((0<=lat)&(lat<=25),drop=True).values]
     masks['Middle East'] = [lon.where((25<=lon)&(lon<=60),drop=True).values,lat.where((10<=lat)&(lat<=40),drop=True).values]
     masks['European Russia'] = [lon.where((43<=lon)&(lon<=70),drop=True).values,lat.where((50<=lat)&(lat<=75),drop=True).values]
 
-    masks['Northern Oceania'] = [lon.where((100<=lon)&(lon<=180),drop=True).values,lat.where((-23.5<=lat)&(lat<=0),drop=True).values]
-    masks['Southern Oceania'] = [lon.where((100<=lon)&(lon<=180),drop=True).values,lat.where((-50<=lat)&(lat<=-23.5),drop=True).values]
+    masks['Northern Oceania'] = [lon.where((100<=lon)&(lon<=160),drop=True).values,lat.where((-23.5<=lat)&(lat<=0),drop=True).values]
+    masks['Southern Oceania'] = [lon.where((100<=lon)&(lon<=160),drop=True).values,lat.where((-50<=lat)&(lat<=-23.5),drop=True).values]
     masks['Indonesia'] = [lon.where((95<=lon)&(lon<=142),drop=True).values,lat.where((-10<=lat)&(lat<=5),drop=True).values]
     masks['Philippines'] = [lon.where((115<=lon)&(lon<=130),drop=True).values,lat.where((5<=lat)&(lat<=20),drop=True).values]
 
     lon_west = lon.where(lon>=340,drop=True)
-    lon_east = lon.where(lon<=55,drop=True)
+    lon_east = lon.where(lon<=40,drop=True)
     lon_cafrica = xr.concat((lon_west,lon_east),dim='longitude').values
-    masks['Central Africa'] = [lon_cafrica,lat.where((-10<=lat)&(lat<=10),drop=True).values]
+    masks['West-Central Africa'] = [lon_cafrica,lat.where((-5<=lat)&(lat<=20),drop=True).values]
     lon_west = lon.where(lon>=340,drop=True)
     lon_east = lon.where(lon<=25,drop=True)
     lon_nafrica = xr.concat((lon_west,lon_east),dim='longitude').values
-    masks['Northern Africa'] = [lon_nafrica,lat.where((10<=lat)&(lat<=38),drop=True).values]
-    masks['Southern Africa'] = [lon.where((9<=lon)&(lon<=52),drop=True).values,lat.where((-35<=lat)&(lat<=-10),drop=True).values]
+    masks['Northern Africa'] = [lon_nafrica,lat.where((20<=lat)&(lat<=38),drop=True).values]
+    masks['Southern Africa'] = [lon.where((9<=lon)&(lon<=52),drop=True).values,lat.where((-35<=lat)&(lat<=-5),drop=True).values]
     
 # Call fill_mask() on GFDL and CESM2 datasets
 masks_GFDL = {}
@@ -181,7 +181,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     return im
 
-def scatter(ds,ax,s,linewidths):
+def scatter(ds,ax,s):
     '''Place markers over grid cells that emerge in some ensemble members but not all'''
     # Number of ensemble members
     ens_num = len(ds['ensemble'].values)
@@ -199,7 +199,27 @@ def scatter(ds,ax,s,linewidths):
     
     # Mark grid cells
     crs = ccrs.PlateCarree()
-    ax.scatter(X,Y,transform=crs,zorder=1,s=s,facecolors='none', edgecolors='black', linewidths=linewidths)
+    #ax.scatter(X,Y,transform=crs,zorder=1,s=s,facecolors='none', edgecolors='black', linewidths=linewidths)
+    ax.scatter(X,Y,transform=crs,zorder=1,s=s,marker='.',c='black')
+
+def box(region,ax):
+    '''Draw a box around a region on plot'''
+    crs = ccrs.PlateCarree()
+    
+    # Get coordinates of lower left corner
+    X = masks_GFDL[region][0][0]
+    Y = masks_GFDL[region][1][0]
+    
+    # Get width, height
+    dx = masks_GFDL[region][0][-1] - X
+    dy = masks_GFDL[region][1][-1] - Y
+    
+    # Account for regions that span lon=0
+    if dx < 0:
+        dx += 360
+    
+    # Add box
+    ax.add_patch(mpatches.Rectangle((X, Y), dx, dy,transform=crs,facecolor='none',edgecolor='black',linestyle='--',zorder=20))
     
 def calc_baseline(ds):
     '''Calculates 1980-2000 baseline capacity, by month (mean - 2*std)'''
@@ -309,6 +329,10 @@ def spatial_toe(ds,title):
     contour(ds['0.9'].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max')
     contour(ds['0.8'].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max')
     contour(ds['0.7'].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max')
+    
+    regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
+    for region in regions:
+        box(region,axs[0][1])
 
     # Annotating text
     axs[0][0].text(0.5,0.5,'Ensemble\n Earliest',fontsize=14,horizontalalignment='right',verticalalignment='center');
@@ -328,7 +352,7 @@ def spatial_toe(ds,title):
     # Overall figure title
     fig.suptitle(title);
     
-def spatial_toe_diff(ds,title,s=0.3,linewidths=0.4):
+def spatial_toe_diff(ds,title,s=0.3):
     '''Plot ToE range for all grid cells (global)'''
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -340,11 +364,11 @@ def spatial_toe_diff(ds,title,s=0.3,linewidths=0.4):
 
     # Plots of ToE range: max ToE - min ToE
     im = contour(ds['0.9'].max(dim='ensemble')-ds['0.9'].min(dim='ensemble'),'10% Reduction',axs[0],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.9'],axs[0],s,linewidths)
+    scatter(ds['0.9'],axs[0],s)
     contour(ds['0.8'].max(dim='ensemble')-ds['0.8'].min(dim='ensemble'),'20% Reduction',axs[1],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.8'],axs[1],s,linewidths)
+    scatter(ds['0.8'],axs[1],s)
     contour(ds['0.7'].max(dim='ensemble')-ds['0.7'].min(dim='ensemble'),'30% Reduction',axs[2],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.7'],axs[2],s,linewidths)
+    scatter(ds['0.7'],axs[2],s)
 
     # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
