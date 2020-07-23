@@ -88,6 +88,7 @@ def map_region(region,model):
     
     fig, ax = plt.subplots(subplot_kw={'projection':crs})
     
+    # Get correct masks based on model
     if model == 'GFDL':
         masks = masks_GFDL
     elif model == 'CESM2':
@@ -105,40 +106,14 @@ def map_region(region,model):
             xmax -= 360
         ymin = masks[region][1][0]
         ymax = masks[region][1][-1]
+        # Shrink plot to focus on region
         ax.set_extent([xmin,xmax,ymin,ymax],crs=crs)
+
+    # Add map features
     ax.coastlines()
     ax.add_feature(cfeature.BORDERS.with_scale('50m'))
     ax.add_feature(cfeature.OCEAN, color='skyblue')
     ax.add_feature(cfeature.LAND, color='lightgrey')
-
-def contour_plot(ds,title,levels=10,cmap='Reds',label='Labor Capacity, %'):
-    '''Function to create a contour plot of labor capacity (new axis)'''
-    # Specify projection
-    crs = ccrs.PlateCarree()
-
-    # Create figure and axes
-    fig,ax = plt.subplots(figsize=(10,10),subplot_kw={'projection':crs})
-
-    # Specify variables
-    X = ds['lon']
-    Y = ds['lat']
-    Z = ds.squeeze()
-    Z, X = add_cyclic_point(Z,coord=X)
-
-    # Create contour plot
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap)
-
-    # Add coastlines and ocean mask
-    ax.coastlines()
-    ax.add_feature(cfeature.OCEAN,zorder=10,facecolor='lightskyblue')
-    
-    # Add national boundaries
-    ax.add_feature(cfeature.BORDERS.with_scale('50m'),edgecolor='silver')
-
-    # Set colorbar, title
-    cbar = plt.colorbar(im,ax=ax,orientation='horizontal',fraction=0.05,pad=0.05)
-    cbar.set_label(label,fontsize=12)
-    plt.title(title)
     
 def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray',extend='both'):
     '''Function to create a contour plot of labor capacity (axis as parameter)'''
@@ -181,7 +156,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     return im
 
-def scatter(ds,ax,s):
+def scatter(ds,ax,s,reduce=False):
     '''Place markers over grid cells that emerge in some ensemble members but not all'''
     # Number of ensemble members
     ens_num = len(ds['ensemble'].values)
@@ -196,10 +171,13 @@ def scatter(ds,ax,s):
     # Get x,y for these grid cells
     X = [x[0] for x in ds_cusp['xy'].values]
     Y = [x[1] for x in ds_cusp['xy'].values]
+
+    if reduce:
+        X = X[::3]
+        Y = Y[::3]
     
     # Mark grid cells
     crs = ccrs.PlateCarree()
-    #ax.scatter(X,Y,transform=crs,zorder=1,s=s,facecolors='none', edgecolors='black', linewidths=linewidths)
     ax.scatter(X,Y,transform=crs,zorder=1,s=s,marker='.',c='black')
 
 def box(region,ax):
@@ -352,7 +330,7 @@ def spatial_toe(ds,title):
     # Overall figure title
     fig.suptitle(title);
     
-def spatial_toe_diff(ds,title,s=0.3):
+def spatial_toe_diff(ds,title,s=0.3,reduce=False):
     '''Plot ToE range for all grid cells (global)'''
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -364,11 +342,11 @@ def spatial_toe_diff(ds,title,s=0.3):
 
     # Plots of ToE range: max ToE - min ToE
     im = contour(ds['0.9'].max(dim='ensemble')-ds['0.9'].min(dim='ensemble'),'10% Reduction',axs[0],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.9'],axs[0],s)
+    scatter(ds['0.9'],axs[0],s,reduce)
     contour(ds['0.8'].max(dim='ensemble')-ds['0.8'].min(dim='ensemble'),'20% Reduction',axs[1],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.8'],axs[1],s)
+    scatter(ds['0.8'],axs[1],s,reduce)
     contour(ds['0.7'].max(dim='ensemble')-ds['0.7'].min(dim='ensemble'),'30% Reduction',axs[2],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.7'],axs[2],s)
+    scatter(ds['0.7'],axs[2],s,reduce)
 
     # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
@@ -412,62 +390,6 @@ def average_toe_bar(ds,ds_pop,model,title):
         years_90 = ds_90_region.weighted(ds_pop).mean(['lon','lat'])
         years_80 = ds_80_region.weighted(ds_pop).mean(['lon','lat'])
         years_70 = ds_70_region.weighted(ds_pop).mean(['lon','lat'])
-
-        # [[Lower range],[upper range]] -- range of values across ensemble members
-        errors_90 = [[years_90.max('ensemble')-years_90.mean('ensemble')],[years_90.mean('ensemble')-years_90.min('ensemble')]]
-        ax.bar(x - width, -years_90.mean('ensemble'), width, label='10%', bottom=2100, yerr=errors_90, error_kw={'capsize':5}, color='royalblue')
-        errors_80 = [[years_80.max('ensemble')-years_80.mean('ensemble')],[years_80.mean('ensemble')-years_80.min('ensemble')]]
-        ax.bar(x, -years_80.mean('ensemble'), width, label='20%', bottom=2100, yerr=errors_80, error_kw={'capsize':5}, color='green')
-        errors_70 = [[years_70.max('ensemble')-years_70.mean('ensemble')],[years_70.mean('ensemble')-years_70.min('ensemble')]]
-        ax.bar(x + width, -years_70.mean('ensemble'), width, label='30%',bottom=2100, yerr=errors_70, error_kw={'capsize':5}, color='orange')
-
-    # Region labels on top
-    ax.xaxis.set_tick_params(labeltop=True,labelbottom=False,bottom=False)
-    ax.set_xticks(locs)
-    ax.set_xticklabels(regions)
-    ax.set_ylim([2000,2100]);
-
-    # Legend for different thresholds
-    blue_patch = mpatches.Patch(color='royalblue', label='10% reduction')
-    green_patch = mpatches.Patch(color='green', label='20% reduction')
-    orange_patch = mpatches.Patch(color='orange', label='30% reduction')
-    ax.legend(handles=[blue_patch,green_patch,orange_patch], loc='lower right');
-    ax.set_title(title,fontsize=14);
-    
-def toe_bar(ds,ds_base,ds_pop,model,title,labor_thres,freq_thres):
-    '''Bar graph showing portion of 21st century spent after ToE
-        Uses ToE for average labor capacity across grid cells in regions'''
-    
-    # Regions to plot
-    regions = ['India','Central America','Northern South America','Southeast Asia','Central Africa','Northern Oceania']
-
-    fig, ax = plt.subplots(figsize=(20,10))
-
-    # Location of region labels; width of bars
-    locs = np.arange(len(regions))
-    width = 0.2
-
-    for x in locs:
-        region = regions[x]
-
-        # Population-weighted regional labor capacity
-        ds_region = slice_region(ds,region,model)
-        capacity = ds_region.weighted(ds_pop).mean(['lat','lon'])
-        
-        # Population-weighted regional baseline
-        base_region = slice_region(ds_base,region,model)
-        base = base_region.weighted(ds_pop).mean(['lat','lon'])
-        
-        # ToEs using regional average
-        ds_toe = toe(capacity,base,labor_thres,freq_thres)
-        
-        # Calculate # of >ToE years for different thresholds
-        years_90 = 2100-ds_toe['0.9']
-        years_90 = years_90.where(years_90>=0,0)
-        years_80 = 2100-ds_toe['0.8']
-        years_80 = years_80.where(years_80>=0,0)
-        years_70 = 2100-ds_toe['0.7']
-        years_70 = years_70.where(years_70>=0,0)
 
         # [[Lower range],[upper range]] -- range of values across ensemble members
         errors_90 = [[years_90.max('ensemble')-years_90.mean('ensemble')],[years_90.mean('ensemble')-years_90.min('ensemble')]]
