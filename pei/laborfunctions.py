@@ -288,7 +288,7 @@ def toe(ds,ds_base,labor_thres):
         ds_toe[str(thres)] = xr.apply_ufunc(emergence,ds_thres,input_core_dims=[['year']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
     return ds_toe
 
-def spatial_toe(ds,title):
+def spatial_toe(ds,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -299,14 +299,14 @@ def spatial_toe(ds,title):
     cmap = 'magma'
 
     # Plots of ToE: earliest among ensemble members
-    im = contour(ds['0.9'].min(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max')
-    contour(ds['0.8'].min(dim='ensemble'),'20% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max')
-    contour(ds['0.7'].min(dim='ensemble'),'30% Reduction',axs[0][3],levels=levels,cmap =cmap,label='Year',extend='max')
+    im = contour(ds[thres[0]].min(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max')
+    contour(ds[thres[1]].min(dim='ensemble'),'25% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max')
+    contour(ds[thres[2]].min(dim='ensemble'),'50% Reduction',axs[0][3],levels=levels,cmap =cmap,label='Year',extend='max')
 
     # Plots of ToE: mean among ensemble members
-    contour(ds['0.9'].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max')
-    contour(ds['0.8'].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max')
-    contour(ds['0.7'].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max')
+    contour(ds[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max')
+    contour(ds[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max')
+    contour(ds[thres[2]].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max')
     
     regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
     for region in regions:
@@ -330,7 +330,7 @@ def spatial_toe(ds,title):
     # Overall figure title
     fig.suptitle(title);
     
-def spatial_toe_diff(ds,title,s=0.3,reduce=False):
+def spatial_toe_diff(ds,title,thres,s=0.3,reduce=False):
     '''Plot ToE range for all grid cells (global)'''
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -341,12 +341,12 @@ def spatial_toe_diff(ds,title,s=0.3,reduce=False):
     cmap = 'YlOrBr'
 
     # Plots of ToE range: max ToE - min ToE
-    im = contour(ds['0.9'].max(dim='ensemble')-ds['0.9'].min(dim='ensemble'),'10% Reduction',axs[0],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.9'],axs[0],s,reduce)
-    contour(ds['0.8'].max(dim='ensemble')-ds['0.8'].min(dim='ensemble'),'20% Reduction',axs[1],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.8'],axs[1],s,reduce)
-    contour(ds['0.7'].max(dim='ensemble')-ds['0.7'].min(dim='ensemble'),'30% Reduction',axs[2],levels=levels,cmap=cmap,label='Year',under='white',over=None)
-    scatter(ds['0.7'],axs[2],s,reduce)
+    im = contour(ds[thres[0]].max(dim='ensemble')-ds[thres[0]].min(dim='ensemble'),'10% Reduction',axs[0],levels=levels,cmap=cmap,label='Year',under='white',over=None)
+    scatter(ds[thres[0]],axs[0],s,reduce)
+    contour(ds[thres[1]].max(dim='ensemble')-ds[thres[1]].min(dim='ensemble'),'25% Reduction',axs[1],levels=levels,cmap=cmap,label='Year',under='white',over=None)
+    scatter(ds[thres[1]],axs[1],s,reduce)
+    contour(ds[thres[2]].max(dim='ensemble')-ds[thres[2]].min(dim='ensemble'),'50% Reduction',axs[2],levels=levels,cmap=cmap,label='Year',under='white',over=None)
+    scatter(ds[thres[2]],axs[2],s,reduce)
 
     # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
