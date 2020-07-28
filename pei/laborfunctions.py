@@ -115,7 +115,7 @@ def map_region(region,model):
     ax.add_feature(cfeature.OCEAN, color='skyblue')
     ax.add_feature(cfeature.LAND, color='lightgrey')
     
-def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray',extend='both'):
+def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray',extend='both',crop=False):
     '''Function to create a contour plot of labor capacity (axis as parameter)'''
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -150,6 +150,10 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     # Add national boundaries
     ax.add_feature(cfeature.BORDERS.with_scale('50m'),edgecolor='silver')
+    
+    # Crop bottom if necessary
+    if crop:
+        ax.set_extent([-180,180,-60,90],crs=crs)
 
     # Set title
     ax.set_title(title)
@@ -291,73 +295,73 @@ def toe(ds,ds_base,labor_thres):
 def spatial_toe(ds,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
     # Specify projection
-    crs = ccrs.PlateCarree()
+    crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,8),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,3]})
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7.5),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,3]})
     levels = np.linspace(2000,2100,21)
     cmap = 'magma'
 
     # Plots of ToE: earliest among ensemble members
-    im = contour(ds[thres[0]].min(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max')
-    contour(ds[thres[1]].min(dim='ensemble'),'25% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max')
-    contour(ds[thres[2]].min(dim='ensemble'),'50% Reduction',axs[0][3],levels=levels,cmap =cmap,label='Year',extend='max')
+    im = contour(ds[thres[0]].min(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+    contour(ds[thres[1]].min(dim='ensemble'),'25% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+    contour(ds[thres[2]].min(dim='ensemble'),'50% Reduction',axs[0][3],levels=np.linspace(2000,2100),cmap =cmap,label='Year',extend='max',crop=True)
 
     # Plots of ToE: mean among ensemble members
-    contour(ds[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max')
-    contour(ds[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max')
-    contour(ds[thres[2]].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max')
+    contour(ds[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    contour(ds[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    contour(ds[thres[2]].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     
     regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
     for region in regions:
         box(region,axs[0][1])
 
     # Annotating text
-    axs[0][0].text(0.5,0.5,'Ensemble\n Earliest',fontsize=14,horizontalalignment='right',verticalalignment='center');
+    axs[0][0].text(0.5,0.5,'Ensemble\n Earliest',fontsize=22,horizontalalignment='right',verticalalignment='center');
     axs[0][0].set_frame_on(False)
-    axs[1][0].text(0.5,0.5,'Ensemble\n Mean',fontsize=14,horizontalalignment='right',verticalalignment='center');
+    axs[1][0].text(0.5,0.5,'Ensemble\n Mean',fontsize=22,horizontalalignment='right',verticalalignment='center');
     axs[1][0].set_frame_on(False)
 
     # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
-    cbar_ax = fig.add_axes([0.3, 0.1, 0.4, 0.05])
+    cbar_ax = fig.add_axes([0.3, 0.125, 0.4, 0.05])
     cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
-    cbar.set_label('Year',fontsize=14)
-    cbar.set_ticks(np.linspace(2000,2110,12))
-    cbar.set_ticklabels(['2000','2010','2020','2030','2040','2050','2060','2070','2080','2090','2100+'])
+    cbar.set_label('Year',fontsize=22)
+    cbar.set_ticks(np.linspace(2000,2120,7))
+    cbar.set_ticklabels(['2000','2020','2040','2060','2080','2100+'])
     fig.subplots_adjust(wspace=.05,hspace=.05)
 
     # Overall figure title
-    fig.suptitle(title);
+    fig.suptitle(title,fontweight='bold');
     
 def spatial_toe_diff(ds,title,thres,s=0.3,reduce=False):
     '''Plot ToE range for all grid cells (global)'''
     # Specify projection
-    crs = ccrs.PlateCarree()
+    crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=3,figsize=(22,5),subplot_kw={'projection':crs})
+    fig, axs = plt.subplots(ncols=3,figsize=(22,4.75),subplot_kw={'projection':crs})
     levels = np.linspace(1,60,30)
     cmap = 'YlOrBr'
 
     # Plots of ToE range: max ToE - min ToE
-    im = contour(ds[thres[0]].max(dim='ensemble')-ds[thres[0]].min(dim='ensemble'),'10% Reduction',axs[0],levels=levels,cmap=cmap,label='Year',under='white',over=None)
+    im = contour(ds[thres[0]].max(dim='ensemble')-ds[thres[0]].min(dim='ensemble'),'10% Reduction',axs[0],levels=levels,cmap=cmap,label='Year',under='white',over=None,crop=True)
     scatter(ds[thres[0]],axs[0],s,reduce)
-    contour(ds[thres[1]].max(dim='ensemble')-ds[thres[1]].min(dim='ensemble'),'25% Reduction',axs[1],levels=levels,cmap=cmap,label='Year',under='white',over=None)
+    contour(ds[thres[1]].max(dim='ensemble')-ds[thres[1]].min(dim='ensemble'),'25% Reduction',axs[1],levels=levels,cmap=cmap,label='Year',under='white',over=None,crop=True)
     scatter(ds[thres[1]],axs[1],s,reduce)
-    contour(ds[thres[2]].max(dim='ensemble')-ds[thres[2]].min(dim='ensemble'),'50% Reduction',axs[2],levels=levels,cmap=cmap,label='Year',under='white',over=None)
+    contour(ds[thres[2]].max(dim='ensemble')-ds[thres[2]].min(dim='ensemble'),'50% Reduction',axs[2],levels=levels,cmap=cmap,label='Year',under='white',over=None,crop=True)
     scatter(ds[thres[2]],axs[2],s,reduce)
 
     # Single colorbar for all plots
-    fig.subplots_adjust(bottom=0.2)
-    cbar_ax = fig.add_axes([0.3, 0.1, 0.4, 0.075])
+    fig.subplots_adjust(bottom=0.225)
+    cbar_ax = fig.add_axes([0.3, 0.15, 0.4, 0.075])
     cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
-    cbar.set_label('Years',fontsize=14)
+    cbar.set_label('Years',fontsize=22)
     cbar.set_ticks([1,10,20,30,40,50,60])
     fig.subplots_adjust(wspace=.05,hspace=.05)
 
     # Overall figure title
-    fig.suptitle(title);
+    fig.suptitle(title,fontweight='bold');
     
 def average_toe_bar(ds,ds_pop,model,title):
     '''Bar graph showing portion of 21st century spent after ToE
