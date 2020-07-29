@@ -10,10 +10,10 @@ tref1 = xr.open_dataset('../data/raw/GFDL/t_ref_mean_1950-2100_ens1-3.nc',chunks
 tref2 = xr.open_mfdataset('/local/ss23/GFDL_LEs/ATM/RCP85/t_ref.rcp85*',combine='nested',concat_dim='ensemble',chunks={'time':1095})
 tref = xr.concat([tref1,tref2],dim='ensemble')
 
-tref_seasonal = tref.resample(time='Q-NOV').mean(['time','ensemble'])
+tref_seasonal = tref.resample(time='Q-NOV').mean(['time'])
 
 wbgt = 0.7*wbt['WBT'] + 0.3*(tref['t_ref']-273.15)
-wbgt_seasonal = wbgt.resample(time='Q-NOV').mean(['time','ensemble'])
+wbgt_seasonal = wbgt.resample(time='Q-NOV').mean(['time'])
 
-tref_seasonal.to_netcdf('../data/processed/GFDL/Map_Data/tref_seasonal.nc')
-wbgt_seasonal.to_netcdf('../data/processed/GFDL/Map_Data/wbgt_seasonal.nc')
+tref_seasonal.to_netcdf('../data/processed/GFDL/Map_Data/tref_seasonal_ens1-30.nc')
+wbgt_seasonal.to_netcdf('../data/processed/GFDL/Map_Data/wbgt_seasonal_ens1-30.nc')

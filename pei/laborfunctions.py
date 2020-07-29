@@ -153,7 +153,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     # Crop bottom if necessary
     if crop:
-        ax.set_extent([-180,180,-60,90],crs=crs)
+        ax.set_extent([-180,180,-60,60],crs=crs)
 
     # Set title
     ax.set_title(title)
@@ -298,7 +298,7 @@ def spatial_toe(ds,title,thres):
     crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7.5),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,3]})
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,3]})
     levels = np.linspace(2000,2100,21)
     cmap = 'magma'
 
@@ -340,7 +340,7 @@ def spatial_toe_diff(ds,title,thres,s=0.3,reduce=False):
     crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=3,figsize=(22,4.75),subplot_kw={'projection':crs})
+    fig, axs = plt.subplots(ncols=3,figsize=(22,4.5),subplot_kw={'projection':crs})
     levels = np.linspace(1,60,30)
     cmap = 'YlOrBr'
 
