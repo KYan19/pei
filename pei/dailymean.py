@@ -1,7 +1,7 @@
 import xarray as xr
 
 # List of ensembles members to process
-ensembles = ['006','007']
+ensembles = ['001','002','003','004','005','008','009','010']
 
 for ens in ensembles:
     # WBT data crunching
@@ -17,7 +17,7 @@ for ens in ensembles:
     # Save as new data file
     ds_mean.to_netcdf('../data/processed/CESM2/WBTdailymean/WBT1251ens'+ens+'.nc')
     
-    # TSA data crunching
+    '''# TSA data crunching
     # Path to data files for this ensemble member
     paths_TSA = '/local/ss23/CESM2_LE/ATM/RCP85/TSA/b.e21.*.f09_g17.LE2-1251.' + ens + '.clm2.h7.TSA.*.nc'
     
@@ -28,4 +28,4 @@ for ens in ensembles:
     ds_mean = ds.resample(time='1D').mean()
     
     # Save as new data file
-    ds_mean.to_netcdf('../data/processed/CESM2/TSAdailymean/TSA1251ens'+ens+'.nc')
+    ds_mean.to_netcdf('../data/processed/CESM2/TSAdailymean/TSA1251ens'+ens+'.nc')'''
