@@ -597,3 +597,36 @@ def toe_bar(ds,ds_base,ds_pop,model,title,labor_thres,freq_thres):
     orange_patch = mpatches.Patch(color='orange', label='30% reduction')
     ax.legend(handles=[blue_patch,green_patch,orange_patch], loc='lower right');
     ax.set_title(title,fontsize=14);
+    
+# OLD EMERGENCE FUNCTIONS -- BEFORE IMPLEMENTATION OF SUMMERTIME MONTHS
+def emergence(ds,start_year):
+    '''Function finds first year with labor capacity < threshold'''
+    # Array indices where capacity < threshold
+    ds_thres = ds.nonzero()
+    
+    # If non-empty, index + startyear = ToE
+    if len(ds_thres[0]) > 0:
+        return start_year+ds_thres[0][0].item()
+    
+    # If empty, return year after 2100
+    return 2101
+
+def toe(ds,ds_base,labor_thres):
+    '''Return dataset of ToEs based on various inputted thresholds (any 3 months below threshold)'''
+    # First year of the dataset
+    start_year = ds['time.year'][0].item()
+
+    # Dataset for ToEs
+    ds_toe = xr.Dataset()
+
+    # Loop through inputted thresholds
+    for thres in labor_thres:
+        # See if each month's capacity is below threshold
+        ds_thres = ds < (thres*ds_base.sel(month=ds['time.month']))
+        
+        # See if enough months in each year are below threshold
+        ds_thres = ds_thres.groupby('time.year').sum() >= 3
+        
+        # Get first year with enough months below threshold
+        ds_toe[str(thres)] = xr.apply_ufunc(emergence,ds_thres,input_core_dims=[['year']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
+    return ds_toe

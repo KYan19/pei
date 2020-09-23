@@ -11,19 +11,19 @@ import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
 
 # Path to sample data file, CESM2
-path_CESM2 = '../data/processed/CESM2/population_regrid_cesm2.nc'
+path_CESM2 = '../data/processed/CESM2/population_regrid_cesm2_2.nc'
 # Load data from matching file
 ds_CESM2 = xr.open_dataset(path_CESM2)
 
 # Path to sample data file, GFDL
-path_GFDL = '../data/processed/GFDL/population_regrid_esm2m.nc'
+path_GFDL = '../data/processed/GFDL/population_regrid_esm2m_2.nc'
 # Load data from matching file
 ds_GFDL = xr.open_dataset(path_GFDL)
 
 # Populates dictionary of regional masks based on gridding of sample dataset
 def fill_mask(ds,masks):
-    lon = ds['longitude']
-    lat = ds['latitude']
+    lon = ds['lon']
+    lat = ds['lat']
     
     masks['Global'] = [lon.values, lat.values]
     masks['Northern North America'] = [lon.where((190<=lon)&(lon<=310),drop=True).values,lat.where((45<=lat)&(lat<=75),drop=True).values]
@@ -36,11 +36,11 @@ def fill_mask(ds,masks):
     masks['Scandinavia'] = [lon.where((3<=lon)&(lon<=30),drop=True).values,lat.where((55<=lat)&(lat<=70),drop=True).values]
     lon_west = lon.where(lon>=345,drop=True)
     lon_east = lon.where(lon<=35,drop=True)
-    lon_ceur = xr.concat((lon_west,lon_east),dim='longitude').values
+    lon_ceur = xr.concat((lon_west,lon_east),dim='lon').values
     masks['Central Europe'] = [lon_ceur,lat.where((43<=lat)&(lat<=55),drop=True).values]
     lon_west = lon.where(lon>=350,drop=True)
     lon_east = lon.where(lon<=24,drop=True)
-    lon_seur = xr.concat((lon_west,lon_east),dim='longitude').values
+    lon_seur = xr.concat((lon_west,lon_east),dim='lon').values
     masks['Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=43),drop=True).values]
 
     masks['Northern China'] = [lon.where((75<=lon)&(lon<=135),drop=True).values,lat.where((32<=lat)&(lat<=50),drop=True).values]
@@ -59,11 +59,11 @@ def fill_mask(ds,masks):
 
     lon_west = lon.where(lon>=340,drop=True)
     lon_east = lon.where(lon<=40,drop=True)
-    lon_cafrica = xr.concat((lon_west,lon_east),dim='longitude').values
+    lon_cafrica = xr.concat((lon_west,lon_east),dim='lon').values
     masks['West-Central Africa'] = [lon_cafrica,lat.where((-5<=lat)&(lat<=20),drop=True).values]
     lon_west = lon.where(lon>=340,drop=True)
     lon_east = lon.where(lon<=25,drop=True)
-    lon_nafrica = xr.concat((lon_west,lon_east),dim='longitude').values
+    lon_nafrica = xr.concat((lon_west,lon_east),dim='lon').values
     masks['Northern Africa'] = [lon_nafrica,lat.where((20<=lat)&(lat<=38),drop=True).values]
     masks['Southern Africa'] = [lon.where((9<=lon)&(lon<=52),drop=True).values,lat.where((-35<=lat)&(lat<=-5),drop=True).values]
     
@@ -115,7 +115,7 @@ def map_region(region,model):
     ax.add_feature(cfeature.OCEAN, color='skyblue')
     ax.add_feature(cfeature.LAND, color='lightgrey')
     
-def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray',extend='both',crop=False):
+def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray',extend='both',crop=False,colors=None):
     '''Function to create a contour plot of labor capacity (axis as parameter)'''
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -131,7 +131,8 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     N = colormap.N
 
     # Create contour plot
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend=extend)
+    #im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend=extend)
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,colors=colors,extend=extend)
     
     # Set over/under colors for cmap
     if over == None:
@@ -151,7 +152,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     # Add national boundaries
     ax.add_feature(cfeature.BORDERS.with_scale('50m'),edgecolor='silver')
     
-    # Crop bottom if necessary
+    # Crop polar regions if necessary
     if crop:
         ax.set_extent([-180,180,-60,60],crs=crs)
 
@@ -216,18 +217,6 @@ def calc_baseline(ds):
     ds_base = ds_hist_mean - ds_dev
     return ds_base['capacity']
 
-def emergence(ds,start_year):
-    '''Function finds first year with labor capacity < threshold'''
-    # Array indices where capacity < threshold
-    ds_thres = ds.nonzero()
-    
-    # If non-empty, index + startyear = ToE
-    if len(ds_thres[0]) > 0:
-        return start_year+ds_thres[0][0].item()
-    
-    # If empty, return year after 2100
-    return 2101
-
 def emergence_summer(ds,start_year):
     '''Function finds first year with entire summer season below threshold'''
     # Array indices where all three summer months are below threshold
@@ -272,26 +261,6 @@ def toe_summer(ds,ds_base,labor_thres):
         ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
     return ds_toe
 
-def toe(ds,ds_base,labor_thres):
-    '''Return dataset of ToEs based on various inputted thresholds (any 3 months below threshold)'''
-    # First year of the dataset
-    start_year = ds['time.year'][0].item()
-
-    # Dataset for ToEs
-    ds_toe = xr.Dataset()
-
-    # Loop through inputted thresholds
-    for thres in labor_thres:
-        # See if each month's capacity is below threshold
-        ds_thres = ds < (thres*ds_base.sel(month=ds['time.month']))
-        
-        # See if enough months in each year are below threshold
-        ds_thres = ds_thres.groupby('time.year').sum() >= 3
-        
-        # Get first year with enough months below threshold
-        ds_toe[str(thres)] = xr.apply_ufunc(emergence,ds_thres,input_core_dims=[['year']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
-    return ds_toe
-
 def spatial_toe(ds,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
     # Specify projection
@@ -312,6 +281,7 @@ def spatial_toe(ds,title,thres):
     contour(ds[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     contour(ds[thres[2]].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     
+    # Box selected regions
     regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
     for region in regions:
         box(region,axs[0][1])
