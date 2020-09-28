@@ -203,9 +203,34 @@ def box(region,ax):
     
     # Add box
     ax.add_patch(mpatches.Rectangle((X, Y), dx, dy,transform=crs,facecolor='none',edgecolor='black',linestyle='--',zorder=20))
+
+def year_max(ds):
+    '''Gets the mean labor capacity in hottest three months of a given year'''
+    ds_sorted=np.partition(ds,3)
+    return ds_sorted[0:3].mean()
+    
+def max_avg(ds,years=20):
+    '''Splits time dimension into years and passes on to year_max to get yearly baseline'''
+    ds_yearly = np.array_split(ds,years)
+    ds_max = np.apply_along_axis(year_max,1,ds_yearly)
+    return ds_max
     
 def calc_baseline(ds):
     '''Calculates 1980-2000 baseline capacity, by month (mean - 2*std)'''
+    # Slice 1980-2000 data
+    ds_hist  = ds.sel(time=slice('1980-01-31','1999-12-31'))
+
+    # Calculate mean and stdev
+    ds_hist = xr.apply_ufunc(max_avg,ds_hist['capacity'],input_core_dims=[['time']],output_core_dims=[['year']],exclude_dims=set(('time',)),vectorize=True,dask='allowed')
+    ds_hist_mean = ds_hist.mean(['ensemble','year'])
+    ds_hist_dev = ds_hist.std(['ensemble','year'])
+    
+    # Return baseline as the lower bound of "envelope" around mean 
+    ds_base = ds_hist_mean - 2*ds_hist_dev
+    return ds_base
+
+'''def calc_baseline(ds):
+    # Calculates 1980-2000 baseline capacity, by month (mean - 2*std)
     # Slice 1980-2000 data
     ds_hist  = ds.sel(time=slice('1980-01-31','1999-12-31')).groupby('time.month')
 
@@ -215,7 +240,7 @@ def calc_baseline(ds):
     
     # Return baseline as the lower bound of "envelope" around mean 
     ds_base = ds_hist_mean - ds_dev
-    return ds_base['capacity']
+    return ds_base['capacity']'''
 
 def emergence_summer(ds,start_year):
     '''Function finds first year with entire summer season below threshold'''
