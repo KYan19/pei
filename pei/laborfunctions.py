@@ -131,8 +131,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     N = colormap.N
 
     # Create contour plot
-    #im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend=extend)
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,colors=colors,extend=extend)
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend=extend)
     
     # Set over/under colors for cmap
     if over == None:
@@ -245,7 +244,7 @@ def calc_baseline(ds):
 def emergence_summer(ds,start_year):
     '''Function finds first year with entire summer season below threshold'''
     # Array indices where all three summer months are below threshold
-    ds_thres = (ds==3).nonzero()
+    ds_thres = ds.nonzero()
     
     # If non-empty, index + startyear = ToE
     if len(ds_thres[0]) > 0:
@@ -255,7 +254,21 @@ def emergence_summer(ds,start_year):
     return 2101
 
 def toe_summer(ds,ds_base,labor_thres):
-    '''Return dataset of ToEs based on various inputted thresholds (all 3 summer months below threshold)'''
+    start_year = ds['year'][0].item()
+    
+     # Dataset for ToEs
+    ds_toe = xr.Dataset()
+    
+    for thres in labor_thres:
+        # Check if capacity is below threshold
+        ds_thres = ds < thres*ds_base 
+        
+        toe = xr.apply_ufunc(emergence_summer,ds_thres,input_core_dims=[['year']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
+        ds_toe[str(thres)] = toe
+    return ds_toe
+
+'''def toe_summer(ds,ds_base,labor_thres):
+    Return dataset of ToEs based on various inputted thresholds (all 3 summer months below threshold)
     # First year of the dataset
     start_year = ds['time.year'][0].item()
 
@@ -284,7 +297,7 @@ def toe_summer(ds,ds_base,labor_thres):
         
         # Combine data for two hemispheres
         ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
-    return ds_toe
+    return ds_toe'''
 
 def spatial_toe(ds,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
