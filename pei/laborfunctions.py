@@ -299,8 +299,69 @@ def toe_summer(ds,ds_base,labor_thres):
         ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
     return ds_toe'''
 
-def spatial_toe(ds,title,thres):
+def range_plot(ds,ax,label=False):
+    #90th percentile - 10th percentile ToEs
+    ds_range = ds.quantile(0.9,'ensemble') - ds.quantile(0.1,'ensemble')
+    
+    #take average for grid cells that emerge (i.e. range>0)
+    avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0).mean('lon',skipna=True)
+    avg_range_50 = ds_range['0.5'].where(ds_range['0.5']>0).mean('lon',skipna=True)
+    
+    #plot on axes
+    avg_range_25.plot(ax=ax,y='lat',ylim=[-60,60],color='green')
+    avg_range_50.plot(ax=ax,y='lat',ylim=[-60,60],color='orange')
+    ax.set_xticks(range(0,100,25))
+    if label:
+        ax.set_xlabel('Years')
+        
+
+def spatial_toe(ds_esm2m,ds_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
+    # Specify projection
+    crs = ccrs.Robinson()
+
+    # Create figure and axes
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,1]})
+    levels = np.linspace(2000,2100,21)
+    cmap = 'magma'
+
+    # Plots of ToE: ESM2M
+    im = contour(ds_esm2m[thres[0]].mean(dim='ensemble'),'25% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+    contour(ds_esm2m[thres[1]].mean(dim='ensemble'),'50% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+
+    # Plots of ToE: CESM2
+    contour(ds_cesm2[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    contour(ds_cesm2[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    
+    #Plots of ToE range by latitude
+    range_plot(ds_esm2m,axs[0][3])
+    range_plot(ds_cesm2,axs[1][3],label=True)
+    
+    # Box selected regions
+    regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
+    for region in regions:
+        box(region,axs[0][1])
+
+    # Annotating text
+    axs[0][0].text(0.5,0.5,'ESM2M',fontsize=22,horizontalalignment='right',verticalalignment='center');
+    axs[0][0].set_frame_on(False)
+    axs[1][0].text(0.5,0.5,'CESM2',fontsize=22,horizontalalignment='right',verticalalignment='center');
+    axs[1][0].set_frame_on(False)
+
+    # Single colorbar for all plots
+    fig.subplots_adjust(bottom=0.2)
+    cbar_ax = fig.add_axes([0.3, 0.125, 0.4, 0.05])
+    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
+    cbar.set_label('Year',fontsize=22)
+    cbar.set_ticks(np.linspace(2000,2120,7))
+    cbar.set_ticklabels(['2000','2020','2040','2060','2080','2100+'])
+    fig.subplots_adjust(wspace=.05,hspace=.05)
+
+    # Overall figure title
+    fig.suptitle(title,fontweight='bold');
+
+'''def spatial_toe(ds,title,thres):
+    Plot spatial map of ToE for all grid cells (global)
     # Specify projection
     crs = ccrs.Robinson()
 
@@ -340,7 +401,7 @@ def spatial_toe(ds,title,thres):
     fig.subplots_adjust(wspace=.05,hspace=.05)
 
     # Overall figure title
-    fig.suptitle(title,fontweight='bold');
+    fig.suptitle(title,fontweight='bold');'''
     
 def spatial_toe_diff(ds,title,thres,s=0.3,reduce=False):
     '''Plot ToE range for all grid cells (global)'''
