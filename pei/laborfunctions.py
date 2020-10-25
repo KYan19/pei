@@ -153,7 +153,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     # Crop polar regions if necessary
     if crop:
-        ax.set_extent([-180,180,-60,60],crs=crs)
+        ax.set_extent([-180,180,-50,50],crs=crs)
 
     # Set title
     ax.set_title(title)
@@ -299,29 +299,43 @@ def toe_summer(ds,ds_base,labor_thres):
         ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
     return ds_toe'''
 
-def range_plot(ds,ax,label=False):
+def calc_range(ds,land_mask):
     #90th percentile - 10th percentile ToEs
     ds_range = ds.quantile(0.9,'ensemble') - ds.quantile(0.1,'ensemble')
     
-    #take average for grid cells that emerge (i.e. range>0)
-    avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0).mean('lon',skipna=True)
-    avg_range_50 = ds_range['0.5'].where(ds_range['0.5']>0).mean('lon',skipna=True)
+    #Mask out ocean
+    ds_range = ds_range*land_mask
     
+    #take average for grid cells that emerge (i.e. range>0)
+    avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0,np.nan).mean('lon',skipna=True)
+    avg_range_50 = ds_range['0.5'].where(ds_range['0.5']>0,np.nan).mean('lon',skipna=True)
+    
+    avg_range = xr.Dataset()
+    avg_range['0.75'] = avg_range_25
+    avg_range['0.5'] = avg_range_50
+    return avg_range
+
+def range_plot(ds,ax,label=False):
     #plot on axes
-    avg_range_25.plot(ax=ax,y='lat',ylim=[-60,60],color='green')
-    avg_range_50.plot(ax=ax,y='lat',ylim=[-60,60],color='orange')
-    ax.set_xticks(range(0,100,25))
+    ds['0.75'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='green')
+    ds['0.5'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='orange')
+    ax.set_aspect(0.4)
+    ax.grid('True')
+    ax.set_xticks(range(0,50,10))
+
     if label:
         ax.set_xlabel('Years')
+        ax.set_xticklabels(['0','','20','','40'])
+    else:
+        ax.set_xticklabels([])
         
-
-def spatial_toe(ds_esm2m,ds_cesm2,title,thres):
+def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
     # Specify projection
     crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,1]})
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,0.8]})
     levels = np.linspace(2000,2100,21)
     cmap = 'magma'
 
@@ -334,8 +348,8 @@ def spatial_toe(ds_esm2m,ds_cesm2,title,thres):
     contour(ds_cesm2[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     
     #Plots of ToE range by latitude
-    range_plot(ds_esm2m,axs[0][3])
-    range_plot(ds_cesm2,axs[1][3],label=True)
+    range_plot(range_esm2m,axs[0][3])
+    range_plot(range_cesm2,axs[1][3],label=True)
     
     # Box selected regions
     regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
