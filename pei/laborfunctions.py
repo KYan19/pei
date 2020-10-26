@@ -50,7 +50,7 @@ def fill_mask(ds,masks):
     masks['Northern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((23<=lat)&(lat<=30),drop=True).values]
     masks['Southern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=23),drop=True).values]
     masks['Southeast Asia'] = [lon.where((92<=lon)&(lon<=130),drop=True).values,lat.where((0<=lat)&(lat<=25),drop=True).values]
-    masks['Middle East'] = [lon.where((25<=lon)&(lon<=60),drop=True).values,lat.where((10<=lat)&(lat<=40),drop=True).values]
+    masks['Middle East'] = [lon.where((40<=lon)&(lon<=61),drop=True).values,lat.where((13<=lat)&(lat<=30),drop=True).values]
     masks['European Russia'] = [lon.where((43<=lon)&(lon<=70),drop=True).values,lat.where((50<=lat)&(lat<=75),drop=True).values]
 
     masks['Northern Oceania'] = [lon.where((100<=lon)&(lon<=160),drop=True).values,lat.where((-23.5<=lat)&(lat<=0),drop=True).values]
@@ -302,7 +302,7 @@ def toe_summer(ds,ds_base,labor_thres):
 
 def calc_range(ds):
     #90th percentile - 10th percentile ToEs
-    ds_range = ds.quantile(0.9,'ensemble') - ds.quantile(0.1,'ensemble')
+    ds_range = ds.quantile(0.9,'ensemble',interpolation='lower') - ds.quantile(0.1,'ensemble',interpolation='lower')
     
     #take average for grid cells that emerge (i.e. range>0)
     avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0,np.nan).mean('lon',skipna=True)
@@ -353,7 +353,7 @@ def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     range_plot(range_cesm2,axs[1][3],label=True)
     
     # Box selected regions
-    regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa','Southeastern US']
+    regions = ['Middle East','India','Southeast Asia','Northern Oceania','West-Central Africa','Southeastern US']
     for region in regions:
         box(region,axs[0][1])
 
