@@ -32,6 +32,7 @@ def fill_mask(ds,masks):
     masks['Central America'] = [lon.where((250<=lon)&(lon<=315),drop=True).values,lat.where((7<=lat)&(lat<=20),drop=True).values]
     masks['Northern South America'] = [lon.where((270<=lon)&(lon<=330),drop=True).values,lat.where((-23.5<=lat)&(lat<=12),drop=True).values]
     masks['Southern South America'] = [lon.where((270<=lon)&(lon<=330),drop=True).values,lat.where((-57<=lat)&(lat<=-23.5),drop=True).values]
+    masks['Southeastern US'] = [lon.where((260<=lon)&(lon<=285),drop=True).values,lat.where((25<=lat)&(lat<=37),drop=True).values]
 
     masks['Scandinavia'] = [lon.where((3<=lon)&(lon<=30),drop=True).values,lat.where((55<=lat)&(lat<=70),drop=True).values]
     lon_west = lon.where(lon>=345,drop=True)
@@ -299,25 +300,25 @@ def toe_summer(ds,ds_base,labor_thres):
         ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
     return ds_toe'''
 
-def calc_range(ds,land_mask):
+def calc_range(ds):
     #90th percentile - 10th percentile ToEs
     ds_range = ds.quantile(0.9,'ensemble') - ds.quantile(0.1,'ensemble')
-    
-    #Mask out ocean
-    ds_range = ds_range*land_mask
     
     #take average for grid cells that emerge (i.e. range>0)
     avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0,np.nan).mean('lon',skipna=True)
     avg_range_50 = ds_range['0.5'].where(ds_range['0.5']>0,np.nan).mean('lon',skipna=True)
     
+    #combine into one dataset
     avg_range = xr.Dataset()
     avg_range['0.75'] = avg_range_25
     avg_range['0.5'] = avg_range_50
-    return avg_range
+    
+    #return gridcell range + latitudinal average range
+    return [ds_range,avg_range]
 
 def range_plot(ds,ax,label=False):
     #plot on axes
-    ds['0.75'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='green')
+    ds['0.75'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='royalblue')
     ds['0.5'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='orange')
     ax.set_aspect(0.4)
     ax.grid('True')
@@ -352,7 +353,7 @@ def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     range_plot(range_cesm2,axs[1][3],label=True)
     
     # Box selected regions
-    regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
+    regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa','Southeastern US']
     for region in regions:
         box(region,axs[0][1])
 
