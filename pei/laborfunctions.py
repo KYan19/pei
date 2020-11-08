@@ -9,6 +9,7 @@ from cartopy.util import add_cyclic_point
 import numpy as np
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
+import matplotlib.ticker as mticker
 
 # Path to sample data file, CESM2
 path_CESM2 = '../data/processed/CESM2/population_regrid_cesm2_2.nc'
@@ -45,11 +46,11 @@ def fill_mask(ds,masks):
     masks['Southern Europe'] = [lon_seur,lat.where((36<=lat)&(lat<=43),drop=True).values]
 
     masks['Northern China'] = [lon.where((75<=lon)&(lon<=135),drop=True).values,lat.where((32<=lat)&(lat<=50),drop=True).values]
-    masks['Southern China'] = [lon.where((98<=lon)&(lon<=125),drop=True).values,lat.where((22<=lat)&(lat<=32),drop=True).values]
+    masks['Southern China'] = [lon.where((103<=lon)&(lon<=125),drop=True).values,lat.where((23<=lat)&(lat<=35),drop=True).values]
     masks['India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=30),drop=True).values]
     masks['Northern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((23<=lat)&(lat<=30),drop=True).values]
     masks['Southern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=23),drop=True).values]
-    masks['Southeast Asia'] = [lon.where((92<=lon)&(lon<=130),drop=True).values,lat.where((0<=lat)&(lat<=25),drop=True).values]
+    masks['Southeast Asia'] = [lon.where((92<=lon)&(lon<=130),drop=True).values,lat.where((0<=lat)&(lat<=23),drop=True).values]
     masks['Middle East'] = [lon.where((40<=lon)&(lon<=61),drop=True).values,lat.where((13<=lat)&(lat<=30),drop=True).values]
     masks['European Russia'] = [lon.where((43<=lon)&(lon<=70),drop=True).values,lat.where((50<=lat)&(lat<=75),drop=True).values]
 
@@ -116,7 +117,7 @@ def map_region(region,model):
     ax.add_feature(cfeature.OCEAN, color='skyblue')
     ax.add_feature(cfeature.LAND, color='lightgrey')
     
-def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray',extend='both',crop=False,colors=None):
+def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None,over='darkgray',extend='both',crop=False,colors=None,titleloc='center'):
     '''Function to create a contour plot of labor capacity (axis as parameter)'''
     # Specify projection
     crs = ccrs.PlateCarree()
@@ -154,10 +155,10 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     # Crop polar regions if necessary
     if crop:
-        ax.set_extent([-180,180,-50,50],crs=crs)
+        ax.set_extent([-140,160,-50,50],crs=crs)
 
     # Set title
-    ax.set_title(title)
+    ax.set_title(title,loc=titleloc)
     
     return im
 
@@ -203,6 +204,16 @@ def box(region,ax):
     
     # Add box
     ax.add_patch(mpatches.Rectangle((X, Y), dx, dy,transform=crs,facecolor='none',edgecolor='black',linestyle='--',zorder=20))
+    
+def grid(ax,label=False):
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), zorder=20, draw_labels=True,linewidth=0.75, color='gray', alpha=0.4, linestyle='--')
+    gl.left_labels = False
+    gl.bottom_labels = False
+    gl.top_labels = False
+    if label==False:
+        gl.right_labels = False
+    gl.xlocator = mticker.FixedLocator([-135,-90,-45,0,45,90,135])
+    gl.ylocator = mticker.FixedLocator([-45,-30,-15,0,15,30,45,60])
 
 def year_max(ds):
     '''Gets the mean labor capacity in hottest three months of a given year'''
@@ -328,10 +339,33 @@ def range_plot(ds,ax,label=False):
         ax.set_xlabel(u'Δ Years')
         ax.set_xticklabels(['0','','20','','40'])
     else:
-        ax.set_xticklabels([])
+        ax.set_xticklabels(['','','','',''])
         blue_line = mlines.Line2D([], [], color='royalblue', label='25%')
         orange_line = mlines.Line2D([], [], color='orange', label='50%')
-        ax.legend(handles=[blue_line,orange_line], bbox_to_anchor=(0.45,1.05,0.5,0.25),fontsize='large');
+        ax.legend(handles=[blue_line,orange_line], bbox_to_anchor=(0.5,1.1,0.5,0.25),fontsize='x-large');
+
+def stipple(ds,ax,s,reduce=False):
+    '''Place markers over grid cells with large ensemble range'''
+    # Adjust non-emerging grid cells (so that partially emerging grid cells are marked)
+    ds = ds.where(ds<2101,other=2200)
+    
+    #10-90 ensemble range
+    ds_range = (ds.quantile(0.9,'ensemble',interpolation='lower') - ds.quantile(0.1,'ensemble',interpolation='lower')).stack(xy=('lon','lat'))
+    #Grid cells with range > 50 years
+    stipples = ds_range.where(ds_range>50,drop=True)
+    
+    # Get x,y for these grid cells
+    X = [x[0] for x in stipples['xy'].values]
+    Y = [x[1] for x in stipples['xy'].values]
+    
+    # Prevent overcrowding of stipples
+    if reduce:
+        X = X[::3]
+        Y = Y[::3]
+    
+    # Mark grid cells
+    crs = ccrs.PlateCarree()
+    ax.scatter(X,Y,transform=crs,zorder=1,s=s,marker='.',c='black')
         
 def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
@@ -339,24 +373,32 @@ def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,0.8]})
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(21,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,0.8]})
     levels = np.linspace(2000,2100,21)
     cmap = 'magma'
 
     # Plots of ToE: ESM2M
-    im = contour(ds_esm2m[thres[0]].mean(dim='ensemble'),'25% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+    im = contour(ds_esm2m[thres[0]].mean(dim='ensemble'),'25% Reduction',axs[0][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    grid(axs[0][1])
+    stipple(ds_esm2m[thres[0]],axs[0][1],0.5,False)
     contour(ds_esm2m[thres[1]].mean(dim='ensemble'),'50% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+    grid(axs[0][2])
+    stipple(ds_esm2m[thres[1]],axs[0][2],0.5,False)
 
     # Plots of ToE: CESM2
     contour(ds_cesm2[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    grid(axs[1][1])
+    stipple(ds_cesm2[thres[0]],axs[1][1],0.5,True)
     contour(ds_cesm2[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    grid(axs[1][2])
+    stipple(ds_cesm2[thres[1]],axs[1][2],0.5,True)
     
     #Plots of ToE range by latitude
     range_plot(range_esm2m,axs[0][3])
     range_plot(range_cesm2,axs[1][3],label=True)
     
     # Box selected regions
-    regions = ['Middle East','India','Southeast Asia','Northern Oceania','West-Central Africa','Southeastern US']
+    regions = ['Middle East','India','Southeast Asia','Northern Oceania','West-Central Africa','Southeastern US','Southern China']
     for region in regions:
         box(region,axs[0][1])
 
@@ -374,6 +416,13 @@ def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     cbar.set_ticks(np.linspace(2000,2120,7))
     cbar.set_ticklabels(['2000','2020','2040','2060','2080','2100+'])
     fig.subplots_adjust(wspace=.05,hspace=.05)
+    
+    plt.figtext(0.16,0.83,'a',fontweight='bold',fontsize=22)
+    plt.figtext(0.16,0.45,'b',fontweight='bold',fontsize=22)
+    plt.figtext(0.485,0.83,'c',fontweight='bold',fontsize=22)
+    plt.figtext(0.485,0.45,'d',fontweight='bold',fontsize=22)
+    plt.figtext(0.81,0.83,'e',fontweight='bold',fontsize=22)
+    plt.figtext(0.81,0.45,'f',fontweight='bold',fontsize=22)
 
     # Overall figure title
     fig.suptitle(title,fontweight='bold');
