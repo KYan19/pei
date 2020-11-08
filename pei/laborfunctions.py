@@ -325,10 +325,13 @@ def range_plot(ds,ax,label=False):
     ax.set_xticks(range(0,50,10))
 
     if label:
-        ax.set_xlabel('Years')
+        ax.set_xlabel(u'Δ Years')
         ax.set_xticklabels(['0','','20','','40'])
     else:
         ax.set_xticklabels([])
+        blue_line = mlines.Line2D([], [], color='royalblue', label='25%')
+        orange_line = mlines.Line2D([], [], color='orange', label='50%')
+        ax.legend(handles=[blue_line,orange_line], bbox_to_anchor=(0.45,1.05,0.5,0.25),fontsize='large');
         
 def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
