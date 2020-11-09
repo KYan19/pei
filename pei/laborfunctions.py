@@ -60,9 +60,9 @@ def fill_mask(ds,masks):
     masks['Philippines'] = [lon.where((115<=lon)&(lon<=130),drop=True).values,lat.where((5<=lat)&(lat<=20),drop=True).values]
 
     lon_west = lon.where(lon>=340,drop=True)
-    lon_east = lon.where(lon<=40,drop=True)
+    lon_east = lon.where(lon<=17,drop=True)
     lon_cafrica = xr.concat((lon_west,lon_east),dim='lon').values
-    masks['West-Central Africa'] = [lon_cafrica,lat.where((-5<=lat)&(lat<=20),drop=True).values]
+    masks['West Africa'] = [lon_cafrica,lat.where((0<=lat)&(lat<=26),drop=True).values]
     lon_west = lon.where(lon>=340,drop=True)
     lon_east = lon.where(lon<=25,drop=True)
     lon_nafrica = xr.concat((lon_west,lon_east),dim='lon').values
@@ -398,7 +398,7 @@ def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     range_plot(range_cesm2,axs[1][3],label=True)
     
     # Box selected regions
-    regions = ['Middle East','India','Southeast Asia','Northern Oceania','West-Central Africa','Southeastern US','Southern China']
+    regions = ['Middle East','India','Southeast Asia','Northern Oceania','West Africa','Southeastern US','Southern China']
     for region in regions:
         box(region,axs[0][1])
 
