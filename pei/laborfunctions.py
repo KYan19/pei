@@ -133,7 +133,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     N = colormap.N
 
     # Create contour plot
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend=extend)
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,colors=colors,extend=extend)
     
     # Set over/under colors for cmap
     if over == None:
