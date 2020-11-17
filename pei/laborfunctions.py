@@ -133,7 +133,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     N = colormap.N
 
     # Create contour plot
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,colors=colors,extend=extend)
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend=extend)
     
     # Set over/under colors for cmap
     if over == None:
@@ -151,7 +151,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     ax.add_feature(cfeature.OCEAN,zorder=10,facecolor='lightskyblue')
     
     # Add national boundaries
-    ax.add_feature(cfeature.BORDERS.with_scale('50m'),edgecolor='silver')
+    #ax.add_feature(cfeature.BORDERS.with_scale('50m'),edgecolor='silver')
     
     # Crop polar regions if necessary
     if crop:
@@ -311,13 +311,14 @@ def toe_summer(ds,ds_base,labor_thres):
         ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
     return ds_toe'''
 
-def calc_range(ds):
+def calc_range(ds,ds_area):
     #90th percentile - 10th percentile ToEs
     ds_range = ds.quantile(0.9,'ensemble',interpolation='lower') - ds.quantile(0.1,'ensemble',interpolation='lower')
     
+    ds_area = ds_area.fillna(0)
     #take average for grid cells that emerge (i.e. range>0)
-    avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0,np.nan).mean('lon',skipna=True)
-    avg_range_50 = ds_range['0.5'].where(ds_range['0.5']>0,np.nan).mean('lon',skipna=True)
+    avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0,np.nan).weighted(ds_area).mean('lon',skipna=True)
+    avg_range_50 = ds_range['0.5'].where(ds_range['0.5']>0,np.nan).weighted(ds_area).mean('lon',skipna=True)
     
     #combine into one dataset
     avg_range = xr.Dataset()
@@ -366,36 +367,46 @@ def stipple(ds,ax,s,reduce=False):
     # Mark grid cells
     crs = ccrs.PlateCarree()
     ax.scatter(X,Y,transform=crs,zorder=1,s=s,marker='.',c='black')
+    
+def base_contour(base,ax):
+    '''Draw contour lines for baseline labor capacity'''
+    # Specify projection
+    crs = ccrs.PlateCarree()
+    
+    X = base['lon']
+    Y = base['lat']
+    Z = base.squeeze()
+    Z, X = add_cyclic_point(Z,coord=X)
+    
+    ax.contour(X,Y,Z,transform=crs,levels=[90],colors=['white'])
         
-def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
+def spatial_toe(ds_esm2m,ds_cesm2,base_esm2m,base_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
     # Specify projection
     crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(21,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,0.8]})
+    fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(19,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3]})
     levels = np.linspace(2000,2100,21)
     cmap = 'magma'
 
     # Plots of ToE: ESM2M
     im = contour(ds_esm2m[thres[0]].mean(dim='ensemble'),'25% Reduction',axs[0][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     grid(axs[0][1])
-    stipple(ds_esm2m[thres[0]],axs[0][1],0.5,False)
+    base_contour(base_esm2m,axs[0][1])
+    
     contour(ds_esm2m[thres[1]].mean(dim='ensemble'),'50% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
     grid(axs[0][2])
-    stipple(ds_esm2m[thres[1]],axs[0][2],0.5,False)
+    base_contour(base_esm2m,axs[0][2])
 
     # Plots of ToE: CESM2
     contour(ds_cesm2[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     grid(axs[1][1])
-    stipple(ds_cesm2[thres[0]],axs[1][1],0.5,True)
+    base_contour(base_cesm2,axs[1][1])
+    
     contour(ds_cesm2[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     grid(axs[1][2])
-    stipple(ds_cesm2[thres[1]],axs[1][2],0.5,True)
-    
-    #Plots of ToE range by latitude
-    range_plot(range_esm2m,axs[0][3])
-    range_plot(range_cesm2,axs[1][3],label=True)
+    base_contour(base_cesm2,axs[1][2])
     
     # Box selected regions
     regions = ['Middle East','India','Southeast Asia','Northern Oceania','West Africa','Southeastern US','Southern China']
@@ -419,10 +430,8 @@ def spatial_toe(ds_esm2m,ds_cesm2,range_esm2m,range_cesm2,title,thres):
     
     plt.figtext(0.16,0.83,'a',fontweight='bold',fontsize=22)
     plt.figtext(0.16,0.45,'b',fontweight='bold',fontsize=22)
-    plt.figtext(0.485,0.83,'c',fontweight='bold',fontsize=22)
-    plt.figtext(0.485,0.45,'d',fontweight='bold',fontsize=22)
-    plt.figtext(0.81,0.83,'e',fontweight='bold',fontsize=22)
-    plt.figtext(0.81,0.45,'f',fontweight='bold',fontsize=22)
+    plt.figtext(0.53,0.83,'c',fontweight='bold',fontsize=22)
+    plt.figtext(0.53,0.45,'d',fontweight='bold',fontsize=22)
 
     # Overall figure title
     fig.suptitle(title,fontweight='bold');
