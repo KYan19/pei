@@ -278,95 +278,6 @@ def toe_summer(ds,ds_base,labor_thres):
         toe = xr.apply_ufunc(emergence_summer,ds_thres,input_core_dims=[['year']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
         ds_toe[str(thres)] = toe
     return ds_toe
-
-'''def toe_summer(ds,ds_base,labor_thres):
-    Return dataset of ToEs based on various inputted thresholds (all 3 summer months below threshold)
-    # First year of the dataset
-    start_year = ds['time.year'][0].item()
-
-    # Dataset for ToEs
-    ds_toe = xr.Dataset()
-    
-    # Loop through inputted thresholds
-    for thres in labor_thres:
-        # Check if capacity is below threshold for each month
-        ds_thres = ds < (thres*ds_base.sel(month=ds['time.month']))
-        
-        # Split into seasons and sum number of truth values
-        # Resampled month index = last month in season
-        ds_thres = ds_thres.resample(time='Q-NOV').sum()
-        
-        # Split into hemispheres and isolate summer season (JJA Northern; DJF Southern)
-        ds_north = ds_thres.where(ds['lat']>0,drop=True)
-        ds_north = ds_north.sel(time=(ds_north['time.month']==8))
-
-        ds_south = ds_thres.where(ds['lat']<0,drop=True)
-        ds_south = ds_south.sel(time=(ds_south['time.month']==2))
-        
-        # Get first year with entire summer season below threshold
-        north_toe = xr.apply_ufunc(emergence_summer,ds_north,input_core_dims=[['time']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
-        south_toe = xr.apply_ufunc(emergence_summer,ds_south,input_core_dims=[['time']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
-        
-        # Combine data for two hemispheres
-        ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
-    return ds_toe'''
-
-def calc_range(ds,ds_area):
-    #90th percentile - 10th percentile ToEs
-    ds_range = ds.quantile(0.9,'ensemble',interpolation='lower') - ds.quantile(0.1,'ensemble',interpolation='lower')
-    
-    ds_area = ds_area.fillna(0)
-    #take average for grid cells that emerge (i.e. range>0)
-    avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0,np.nan).weighted(ds_area).mean('lon',skipna=True)
-    avg_range_50 = ds_range['0.5'].where(ds_range['0.5']>0,np.nan).weighted(ds_area).mean('lon',skipna=True)
-    
-    #combine into one dataset
-    avg_range = xr.Dataset()
-    avg_range['0.75'] = avg_range_25
-    avg_range['0.5'] = avg_range_50
-    
-    #return gridcell range + latitudinal average range
-    return [ds_range,avg_range]
-
-def range_plot(ds,ax,label=False):
-    #plot on axes
-    ds['0.75'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='royalblue')
-    ds['0.5'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='orange')
-    ax.set_aspect(0.4)
-    ax.grid('True')
-    ax.set_xticks(range(0,50,10))
-
-    if label:
-        ax.set_xlabel(u'Δ Years')
-        ax.set_xticklabels(['0','','20','','40'])
-    else:
-        ax.set_xticklabels(['','','','',''])
-        blue_line = mlines.Line2D([], [], color='royalblue', label='25%')
-        orange_line = mlines.Line2D([], [], color='orange', label='50%')
-        ax.legend(handles=[blue_line,orange_line], bbox_to_anchor=(0.5,1.1,0.5,0.25),fontsize='x-large');
-
-def stipple(ds,ax,s,reduce=False):
-    '''Place markers over grid cells with large ensemble range'''
-    # Adjust non-emerging grid cells (so that partially emerging grid cells are marked)
-    ds = ds.where(ds<2101,other=2200)
-    
-    #10-90 ensemble range
-    ds_range = (ds.quantile(0.9,'ensemble',interpolation='lower') - ds.quantile(0.1,'ensemble',interpolation='lower')).stack(xy=('lon','lat'))
-    #Grid cells with range > 50 years
-    stipples = ds_range.where(ds_range>50,drop=True)
-    
-    # Get x,y for these grid cells
-    X = [x[0] for x in stipples['xy'].values]
-    Y = [x[1] for x in stipples['xy'].values]
-    
-    # Prevent overcrowding of stipples
-    if reduce:
-        X = X[::3]
-        Y = Y[::3]
-    
-    # Mark grid cells
-    crs = ccrs.PlateCarree()
-    ax.scatter(X,Y,transform=crs,zorder=1,s=s,marker='.',c='black')
     
 def base_contour(base,ax):
     '''Draw contour lines for baseline labor capacity'''
@@ -435,52 +346,54 @@ def spatial_toe(ds_esm2m,ds_cesm2,base_esm2m,base_cesm2,title,thres):
 
     # Overall figure title
     fig.suptitle(title,fontweight='bold');
-
-'''def spatial_toe(ds,title,thres):
-    Plot spatial map of ToE for all grid cells (global)
+    
+def range_plot(ds_esm2m,ds_cesm2,title,thres):
+    '''Plot spatial map of ToE for all grid cells (global)'''
     # Specify projection
     crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,3]})
-    levels = np.linspace(2000,2100,21)
-    cmap = 'magma'
-
-    # Plots of ToE: earliest among ensemble members
-    im = contour(ds[thres[0]].min(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
-    contour(ds[thres[1]].min(dim='ensemble'),'25% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
-    contour(ds[thres[2]].min(dim='ensemble'),'50% Reduction',axs[0][3],levels=np.linspace(2000,2100),cmap =cmap,label='Year',extend='max',crop=True)
-
-    # Plots of ToE: mean among ensemble members
-    contour(ds[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
-    contour(ds[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
-    contour(ds[thres[2]].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(19,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3]})
+    levels = [1,10,20,30,40,50]
+    cmap = 'viridis'
     
-    # Box selected regions
-    regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
-    for region in regions:
-        box(region,axs[0][1])
+    range_esm2m = ds_esm2m.max('ensemble') - ds_esm2m.min('ensemble')
+    range_cesm2 = ds_cesm2.max('ensemble') - ds_cesm2.min('ensemble')
+    
+    # Plots of ToE: ESM2M
+    im = contour(range_esm2m[thres[0]],'25% Reduction',axs[0][1],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
+    grid(axs[0][1])
+    
+    contour(range_esm2m[thres[1]],'50% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',over=None,under='darkgray',crop=True)
+    grid(axs[0][2])
 
+    # Plots of ToE: CESM2
+    contour(range_cesm2[thres[0]],None,axs[1][1],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
+    grid(axs[1][1])
+    
+    contour(range_cesm2[thres[1]],None,axs[1][2],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
+    grid(axs[1][2])
+    
     # Annotating text
-    axs[0][0].text(0.5,0.5,'Ensemble\n Earliest',fontsize=22,horizontalalignment='right',verticalalignment='center');
+    axs[0][0].text(0.5,0.5,'ESM2M',fontsize=22,horizontalalignment='right',verticalalignment='center');
     axs[0][0].set_frame_on(False)
-    axs[1][0].text(0.5,0.5,'Ensemble\n Mean',fontsize=22,horizontalalignment='right',verticalalignment='center');
+    axs[1][0].text(0.5,0.5,'CESM2',fontsize=22,horizontalalignment='right',verticalalignment='center');
     axs[1][0].set_frame_on(False)
-
-    # Single colorbar for all plots
-    fig.subplots_adjust(bottom=0.2)
-    cbar_ax = fig.add_axes([0.3, 0.125, 0.4, 0.05])
-    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
-    cbar.set_label('Year',fontsize=22)
-    cbar.set_ticks(np.linspace(2000,2120,7))
-    cbar.set_ticklabels(['2000','2020','2040','2060','2080','2100+'])
-    fig.subplots_adjust(wspace=.05,hspace=.05)
-
-    # Overall figure title
-    fig.suptitle(title,fontweight='bold');'''
     
-def spatial_toe_diff(ds,title,thres,s=0.3,reduce=False):
-    '''Plot ToE range for all grid cells (global)'''
+     # Single colorbar for all plots
+    fig.subplots_adjust(bottom=0.2)
+    cbar_ax = fig.add_axes([0.35, 0.125, 0.3, 0.05])
+    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal',extendfrac=[0,0.05]);
+    cbar.set_label(u'Δ Years',fontsize=22)
+    cbar.set_ticks(levels)
+    cbar.set_ticklabels(['1','10','20','30','40','50'])
+    fig.subplots_adjust(wspace=.05,hspace=.05)
+    
+    # Overall figure title
+    fig.suptitle(title,fontweight='bold');
+    
+'''def spatial_toe_diff(ds,title,thres,s=0.3,reduce=False):
+    Plot ToE range for all grid cells (global)
     # Specify projection
     crs = ccrs.Robinson()
 
@@ -506,7 +419,7 @@ def spatial_toe_diff(ds,title,thres,s=0.3,reduce=False):
     fig.subplots_adjust(wspace=.05,hspace=.05)
 
     # Overall figure title
-    fig.suptitle(title,fontweight='bold');
+    fig.suptitle(title,fontweight='bold');'''
     
 def average_toe_bar(ds,ds_pop,model,title):
     '''Bar graph showing portion of 21st century spent after ToE
@@ -634,3 +547,135 @@ def frac_emerge_all(ds_toe,ds_pop,model,ylabel,title):
         frac_emerge_plot(ds_region,pop_region,region,ylabel,ax)
 
     fig.suptitle(title,fontsize=16)
+    
+'''def calc_range(ds,ds_area):
+    #90th percentile - 10th percentile ToEs
+    ds_range = ds.quantile(0.9,'ensemble',interpolation='lower') - ds.quantile(0.1,'ensemble',interpolation='lower')
+    
+    ds_area = ds_area.fillna(0)
+    #take average for grid cells that emerge (i.e. range>0)
+    avg_range_25 = ds_range['0.75'].where(ds_range['0.75']>0,np.nan).weighted(ds_area).mean('lon',skipna=True)
+    avg_range_50 = ds_range['0.5'].where(ds_range['0.5']>0,np.nan).weighted(ds_area).mean('lon',skipna=True)
+    
+    #combine into one dataset
+    avg_range = xr.Dataset()
+    avg_range['0.75'] = avg_range_25
+    avg_range['0.5'] = avg_range_50
+    
+    #return gridcell range + latitudinal average range
+    return [ds_range,avg_range]
+
+def range_plot(ds,ax,label=False):
+    #plot on axes
+    ds['0.75'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='royalblue')
+    ds['0.5'].plot(ax=ax,y='lat',ylim=[-90,90],xlim=[0,40],color='orange')
+    ax.set_aspect(0.4)
+    ax.grid('True')
+    ax.set_xticks(range(0,50,10))
+
+    if label:
+        ax.set_xlabel(u'Δ Years')
+        ax.set_xticklabels(['0','','20','','40'])
+    else:
+        ax.set_xticklabels(['','','','',''])
+        blue_line = mlines.Line2D([], [], color='royalblue', label='25%')
+        orange_line = mlines.Line2D([], [], color='orange', label='50%')
+        ax.legend(handles=[blue_line,orange_line], bbox_to_anchor=(0.5,1.1,0.5,0.25),fontsize='x-large');'''
+
+'''def toe_summer(ds,ds_base,labor_thres):
+    Return dataset of ToEs based on various inputted thresholds (all 3 summer months below threshold)
+    # First year of the dataset
+    start_year = ds['time.year'][0].item()
+
+    # Dataset for ToEs
+    ds_toe = xr.Dataset()
+    
+    # Loop through inputted thresholds
+    for thres in labor_thres:
+        # Check if capacity is below threshold for each month
+        ds_thres = ds < (thres*ds_base.sel(month=ds['time.month']))
+        
+        # Split into seasons and sum number of truth values
+        # Resampled month index = last month in season
+        ds_thres = ds_thres.resample(time='Q-NOV').sum()
+        
+        # Split into hemispheres and isolate summer season (JJA Northern; DJF Southern)
+        ds_north = ds_thres.where(ds['lat']>0,drop=True)
+        ds_north = ds_north.sel(time=(ds_north['time.month']==8))
+
+        ds_south = ds_thres.where(ds['lat']<0,drop=True)
+        ds_south = ds_south.sel(time=(ds_south['time.month']==2))
+        
+        # Get first year with entire summer season below threshold
+        north_toe = xr.apply_ufunc(emergence_summer,ds_north,input_core_dims=[['time']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
+        south_toe = xr.apply_ufunc(emergence_summer,ds_south,input_core_dims=[['time']],vectorize=True,dask='allowed',kwargs={'start_year':start_year})
+        
+        # Combine data for two hemispheres
+        ds_toe[str(thres)] = xr.concat([south_toe,north_toe],dim='lat')
+    return ds_toe'''
+
+'''def spatial_toe(ds,title,thres):
+    Plot spatial map of ToE for all grid cells (global)
+    # Specify projection
+    crs = ccrs.Robinson()
+
+    # Create figure and axes
+    fig, axs = plt.subplots(ncols=4,nrows=2,figsize=(22,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3,3]})
+    levels = np.linspace(2000,2100,21)
+    cmap = 'magma'
+
+    # Plots of ToE: earliest among ensemble members
+    im = contour(ds[thres[0]].min(dim='ensemble'),'10% Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+    contour(ds[thres[1]].min(dim='ensemble'),'25% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+    contour(ds[thres[2]].min(dim='ensemble'),'50% Reduction',axs[0][3],levels=np.linspace(2000,2100),cmap =cmap,label='Year',extend='max',crop=True)
+
+    # Plots of ToE: mean among ensemble members
+    contour(ds[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    contour(ds[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    contour(ds[thres[2]].mean(dim='ensemble'),None,axs[1][3],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    
+    # Box selected regions
+    regions = ['Northern South America','India','Southeast Asia','Northern Oceania','West-Central Africa']
+    for region in regions:
+        box(region,axs[0][1])
+
+    # Annotating text
+    axs[0][0].text(0.5,0.5,'Ensemble\n Earliest',fontsize=22,horizontalalignment='right',verticalalignment='center');
+    axs[0][0].set_frame_on(False)
+    axs[1][0].text(0.5,0.5,'Ensemble\n Mean',fontsize=22,horizontalalignment='right',verticalalignment='center');
+    axs[1][0].set_frame_on(False)
+
+    # Single colorbar for all plots
+    fig.subplots_adjust(bottom=0.2)
+    cbar_ax = fig.add_axes([0.3, 0.125, 0.4, 0.05])
+    cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal');
+    cbar.set_label('Year',fontsize=22)
+    cbar.set_ticks(np.linspace(2000,2120,7))
+    cbar.set_ticklabels(['2000','2020','2040','2060','2080','2100+'])
+    fig.subplots_adjust(wspace=.05,hspace=.05)
+
+    # Overall figure title
+    fig.suptitle(title,fontweight='bold');'''
+
+'''def stipple(ds,ax,s,reduce=False):
+    Place markers over grid cells with large ensemble range
+    # Adjust non-emerging grid cells (so that partially emerging grid cells are marked)
+    ds = ds.where(ds<2101,other=2200)
+    
+    #10-90 ensemble range
+    ds_range = (ds.quantile(0.9,'ensemble',interpolation='lower') - ds.quantile(0.1,'ensemble',interpolation='lower')).stack(xy=('lon','lat'))
+    #Grid cells with range > 50 years
+    stipples = ds_range.where(ds_range>50,drop=True)
+    
+    # Get x,y for these grid cells
+    X = [x[0] for x in stipples['xy'].values]
+    Y = [x[1] for x in stipples['xy'].values]
+    
+    # Prevent overcrowding of stipples
+    if reduce:
+        X = X[::3]
+        Y = Y[::3]
+    
+    # Mark grid cells
+    crs = ccrs.PlateCarree()
+    ax.scatter(X,Y,transform=crs,zorder=1,s=s,marker='.',c='black')'''
