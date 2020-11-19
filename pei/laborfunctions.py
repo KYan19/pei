@@ -133,7 +133,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     N = colormap.N
 
     # Create contour plot
-    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,extend=extend)
+    im = ax.contourf(X,Y,Z,levels=levels,transform=crs,cmap=cmap,colors=colors,extend=extend)
     
     # Set over/under colors for cmap
     if over == None:
@@ -358,26 +358,29 @@ def range_plot(ds_esm2m,ds_cesm2,title,thres):
     # Create figure and axes
     fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(19,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3]})
     levels = [1,10,20,30,40,50]
-    cmap = 'viridis'
+    colors=['indigo','slateblue','mediumseagreen','palegreen','orange']
     
     range_esm2m = ds_esm2m.max('ensemble') - ds_esm2m.min('ensemble')
     range_cesm2 = ds_cesm2.max('ensemble') - ds_cesm2.min('ensemble')
     
     # Plots of ToE: ESM2M
-    im = contour(range_esm2m[thres[0]],'25% Reduction',axs[0][1],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
+    im = contour(range_esm2m[thres[0]],'25% Reduction',axs[0][1],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
     grid(axs[0][1])
     scatter(ds_esm2m['0.75'],axs[0][1])
     
-    contour(range_esm2m[thres[1]],'50% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',over=None,under='darkgray',crop=True)
+    levels = [0,1,10,20,30,40,50]
+    colors=['darkgray','indigo','slateblue','mediumseagreen','palegreen','orange']
+    
+    contour(range_esm2m[thres[1]],'50% Reduction',axs[0][2],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
     grid(axs[0][2])
     scatter(ds_esm2m['0.5'],axs[0][2])
 
     # Plots of ToE: CESM2
-    contour(range_cesm2[thres[0]],None,axs[1][1],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
+    contour(range_cesm2[thres[0]],None,axs[1][1],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
     grid(axs[1][1])
     scatter(ds_cesm2['0.75'],axs[1][1],reduce=True)
     
-    contour(range_cesm2[thres[1]],None,axs[1][2],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
+    contour(range_cesm2[thres[1]],None,axs[1][2],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
     grid(axs[1][2])
     scatter(ds_cesm2['0.5'],axs[1][2],reduce=True)
     
@@ -392,7 +395,7 @@ def range_plot(ds_esm2m,ds_cesm2,title,thres):
     cbar_ax = fig.add_axes([0.35, 0.125, 0.3, 0.05])
     cbar = fig.colorbar(im, cax=cbar_ax,orientation='horizontal',extendfrac=[0,0.05]);
     cbar.set_label(u'Δ Years',fontsize=22)
-    cbar.set_ticks(levels)
+    cbar.set_ticks([1,10,20,30,40,50])
     cbar.set_ticklabels(['1','10','20','30','40','50'])
     fig.subplots_adjust(wspace=.05,hspace=.05)
         
