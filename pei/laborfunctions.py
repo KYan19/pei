@@ -162,17 +162,20 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     return im
 
-def scatter(ds,ax,s,reduce=False):
+def scatter(ds,ax,reduce=False):
     '''Place markers over grid cells that emerge in some ensemble members but not all'''
     # Number of ensemble members
-    ens_num = len(ds['ensemble'].values)
+    #ens_num = len(ds['ensemble'].values)
     
     # Number of emergences per grid cell
-    ds_gray = (ds>2100).sum(dim='ensemble').stack(xy=('lon','lat'))
+    #ds_gray = (ds>2100).sum(dim='ensemble').stack(xy=('lon','lat'))
     
     # Is number of emergences a non-zero patrial of number of ensemble members?
     # Keep grid cells where this is true
-    ds_cusp = ds_gray.where((ds_gray<ens_num)&(ds_gray>0),drop=True)
+    cond1 = ds.max('ensemble')>2100
+    cond2 = ds.min('ensemble')<=2100
+    ds_cusp = (ds*cond1*cond2).stack(xy=('lon','lat'))
+    ds_cusp = ds_cusp.where(ds_cusp>0,drop=True)
     
     # Get x,y for these grid cells
     X = [x[0] for x in ds_cusp['xy'].values]
@@ -184,7 +187,7 @@ def scatter(ds,ax,s,reduce=False):
     
     # Mark grid cells
     crs = ccrs.PlateCarree()
-    ax.scatter(X,Y,transform=crs,zorder=1,s=s,marker='.',c='black')
+    ax.scatter(X,Y,transform=crs,zorder=10,marker='.',s=3,c='white')
 
 def box(region,ax):
     '''Draw a box around a region on plot'''
@@ -363,16 +366,20 @@ def range_plot(ds_esm2m,ds_cesm2,title,thres):
     # Plots of ToE: ESM2M
     im = contour(range_esm2m[thres[0]],'25% Reduction',axs[0][1],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
     grid(axs[0][1])
+    scatter(ds_esm2m['0.75'],axs[0][1])
     
     contour(range_esm2m[thres[1]],'50% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',over=None,under='darkgray',crop=True)
     grid(axs[0][2])
+    scatter(ds_esm2m['0.5'],axs[0][2])
 
     # Plots of ToE: CESM2
     contour(range_cesm2[thres[0]],None,axs[1][1],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
     grid(axs[1][1])
+    scatter(ds_cesm2['0.75'],axs[1][1],reduce=True)
     
     contour(range_cesm2[thres[1]],None,axs[1][2],levels=levels,cmap=cmap,label='Year',over=None,under='darkgray',crop=True)
     grid(axs[1][2])
+    scatter(ds_cesm2['0.5'],axs[1][2],reduce=True)
     
     # Annotating text
     axs[0][0].text(0.5,0.5,'ESM2M',fontsize=22,horizontalalignment='right',verticalalignment='center');
@@ -388,6 +395,11 @@ def range_plot(ds_esm2m,ds_cesm2,title,thres):
     cbar.set_ticks(levels)
     cbar.set_ticklabels(['1','10','20','30','40','50'])
     fig.subplots_adjust(wspace=.05,hspace=.05)
+        
+    plt.figtext(0.16,0.83,'a',fontweight='bold',fontsize=22)
+    plt.figtext(0.16,0.45,'b',fontweight='bold',fontsize=22)
+    plt.figtext(0.53,0.83,'c',fontweight='bold',fontsize=22)
+    plt.figtext(0.53,0.45,'d',fontweight='bold',fontsize=22)
     
     # Overall figure title
     fig.suptitle(title,fontweight='bold');
