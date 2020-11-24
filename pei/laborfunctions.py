@@ -69,6 +69,13 @@ def fill_mask(ds,masks):
     masks['Northern Africa'] = [lon_nafrica,lat.where((20<=lat)&(lat<=38),drop=True).values]
     masks['Southern Africa'] = [lon.where((9<=lon)&(lon<=52),drop=True).values,lat.where((-35<=lat)&(lat<=-5),drop=True).values]
     
+    masks['Bangkok'] = [13.76, 100.5]
+    masks['Delhi'] = [28.7,77.1]
+    masks['Shanghai'] = [31.23,121.47]
+    masks['Lagos'] = [6.5,3.38]
+    masks['Sao Paulo'] = [23.55,46.63]
+    masks['New Orleans'] = [29.95,269.9]
+    
 # Call fill_mask() on GFDL and CESM2 datasets
 masks_GFDL = {}
 masks_CESM2 = {}
@@ -81,6 +88,14 @@ def slice_region(ds, region, model):
         return ds.sel(lon=masks_GFDL[region][0],lat=masks_GFDL[region][1])
     elif model == 'CESM2':
         return ds.sel(lon=masks_CESM2[region][0],lat=masks_CESM2[region][1])
+    else:
+        raise ValueError('Model name not valid')
+        
+def slice_city(ds, city, model):
+    if model == 'GFDL':
+        return ds.sel(lat=masks_GFDL[city][0],lon=masks_GFDL[city][1],method='nearest')
+    elif model == 'CESM2':
+        return ds.sel(lat=masks_CESM2[city][0],lon=masks_CESM2[city][1],method='nearest')
     else:
         raise ValueError('Model name not valid')
 
