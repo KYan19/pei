@@ -73,8 +73,9 @@ def fill_mask(ds,masks):
     masks['Delhi'] = [28.7,77.1]
     masks['Shanghai'] = [31.23,121.47]
     masks['Lagos'] = [6.5,3.38]
-    masks['Sao Paulo'] = [23.55,46.63]
+    masks['Jakarta'] = [-6.2,106.85]
     masks['New Orleans'] = [29.95,269.9]
+    masks['Dubai'] = [25.2,55.27]
     
 # Call fill_mask() on GFDL and CESM2 datasets
 masks_GFDL = {}
