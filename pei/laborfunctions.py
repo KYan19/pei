@@ -237,12 +237,23 @@ def grid(ax,label=False):
 def year_max(ds):
     '''Gets the mean labor capacity in hottest three months of a given year'''
     ds_sorted=np.partition(ds,3)
-    return ds_sorted[0:3].mean()
+    return ds_sorted[0:3].mean() #three months with lowest labor capacity
     
 def max_avg(ds,years=20):
-    '''Splits time dimension into years and passes on to year_max to get yearly baseline'''
+    '''Splits time dimension into years and passes on to year_max to get yearly baseline for capacity'''
     ds_yearly = np.array_split(ds,years)
     ds_max = np.apply_along_axis(year_max,1,ds_yearly)
+    return ds_max
+
+def wbgt_year_max(ds):
+    '''Gets the mean labor capacity in hottest three months of a given year'''
+    ds_sorted=np.partition(ds,3)
+    return ds_sorted[-3:None].mean() #three months with highest WBGT
+
+def wbgt_max_avg(ds,years=40):
+    '''Splits time dimension into years and passes on to year_max_wbgt to get yearly baseline for WBGT'''
+    ds_yearly = np.array_split(ds,years)
+    ds_max = np.apply_along_axis(wbgt_year_max,1,ds_yearly)
     return ds_max
     
 def calc_baseline(ds):
