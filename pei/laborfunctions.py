@@ -47,7 +47,7 @@ def fill_mask(ds,masks):
 
     masks['Northern China'] = [lon.where((75<=lon)&(lon<=135),drop=True).values,lat.where((32<=lat)&(lat<=50),drop=True).values]
     masks['Southern China'] = [lon.where((103<=lon)&(lon<=125),drop=True).values,lat.where((23<=lat)&(lat<=35),drop=True).values]
-    masks['India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=30),drop=True).values]
+    masks['Indian Subcontinent'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=30),drop=True).values]
     masks['Northern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((23<=lat)&(lat<=30),drop=True).values]
     masks['Southern India'] = [lon.where((68<=lon)&(lon<=90),drop=True).values,lat.where((8<=lat)&(lat<=23),drop=True).values]
     masks['Southeast Asia'] = [lon.where((92<=lon)&(lon<=130),drop=True).values,lat.where((0<=lat)&(lat<=23),drop=True).values]
@@ -76,6 +76,7 @@ def fill_mask(ds,masks):
     masks['Jakarta'] = [-6.2,106.85]
     masks['New Orleans'] = [29.95,269.9]
     masks['Dubai'] = [25.2,55.27]
+    masks['Guangzhou'] = [23.13,113.264]
     
 # Call fill_mask() on GFDL and CESM2 datasets
 masks_GFDL = {}
@@ -205,6 +206,13 @@ def scatter(ds,ax,reduce=False):
     crs = ccrs.PlateCarree()
     ax.scatter(X,Y,transform=crs,zorder=10,marker='.',s=3,c='white')
 
+def mark_city(city,ax):
+    crs = ccrs.PlateCarree()
+    X = masks_GFDL[city][1]
+    Y = masks_GFDL[city][0]
+    
+    ax.scatter(X,Y,transform=crs,zorder=20,marker='o',s=12,facecolors='None',edgecolors='black',linewidth=1.5)
+
 def box(region,ax):
     '''Draw a box around a region on plot'''
     crs = ccrs.PlateCarree()
@@ -327,38 +335,35 @@ def spatial_toe(ds_esm2m,ds_cesm2,base_esm2m,base_cesm2,title,thres):
     crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(19,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3]})
+    fig, axs = plt.subplots(ncols=2,nrows=2,figsize=(16,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [3,3]})
     levels = np.linspace(2000,2100,21)
     cmap = 'magma'
 
     # Plots of ToE: ESM2M
-    im = contour(ds_esm2m[thres[0]].mean(dim='ensemble'),'25% Reduction',axs[0][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    im = contour(ds_esm2m[thres[0]].mean(dim='ensemble'),'Moderate (25%) Reduction',axs[0][0],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    grid(axs[0][0])
+    base_contour(base_esm2m,axs[0][0])
+    
+    contour(ds_esm2m[thres[1]].mean(dim='ensemble'),'Severe (50%) Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
     grid(axs[0][1])
     base_contour(base_esm2m,axs[0][1])
-    
-    contour(ds_esm2m[thres[1]].mean(dim='ensemble'),'50% Reduction',axs[0][2],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
-    grid(axs[0][2])
-    base_contour(base_esm2m,axs[0][2])
 
     # Plots of ToE: CESM2
-    contour(ds_cesm2[thres[0]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    contour(ds_cesm2[thres[0]].mean(dim='ensemble'),None,axs[1][0],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    grid(axs[1][0])
+    base_contour(base_cesm2,axs[1][0])
+    
+    contour(ds_cesm2[thres[1]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     grid(axs[1][1])
     base_contour(base_cesm2,axs[1][1])
     
-    contour(ds_cesm2[thres[1]].mean(dim='ensemble'),None,axs[1][2],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
-    grid(axs[1][2])
-    base_contour(base_cesm2,axs[1][2])
-    
     # Box selected regions
-    regions = ['Middle East','India','Southeast Asia','Northern Oceania','West Africa','Southeastern US','Southern China']
+    regions = ['Middle East','Indian Subcontinent','Southeast Asia','Northern Oceania','West Africa','Southeastern US','Southern China']
     for region in regions:
-        box(region,axs[0][1])
-
-    # Annotating text
-    axs[0][0].text(0.5,0.5,'ESM2M',fontsize=22,horizontalalignment='right',verticalalignment='center');
-    axs[0][0].set_frame_on(False)
-    axs[1][0].text(0.5,0.5,'CESM2',fontsize=22,horizontalalignment='right',verticalalignment='center');
-    axs[1][0].set_frame_on(False)
+        box(region,axs[0][0])
+    cities=['Guangzhou','New Orleans','Dubai','Lagos','Jakarta','Bangkok','Delhi']
+    for city in cities:
+        mark_city(city,axs[0][0])
 
     # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
@@ -367,15 +372,25 @@ def spatial_toe(ds_esm2m,ds_cesm2,base_esm2m,base_cesm2,title,thres):
     cbar.set_label('Year',fontsize=22)
     cbar.set_ticks(np.linspace(2000,2120,7))
     cbar.set_ticklabels(['2000','2020','2040','2060','2080','2100+'])
-    fig.subplots_adjust(wspace=.05,hspace=.05)
+    fig.subplots_adjust(wspace=.08,hspace=.05)
     
-    plt.figtext(0.16,0.83,'a',fontweight='bold',fontsize=22)
-    plt.figtext(0.16,0.45,'b',fontweight='bold',fontsize=22)
-    plt.figtext(0.53,0.83,'c',fontweight='bold',fontsize=22)
-    plt.figtext(0.53,0.45,'d',fontweight='bold',fontsize=22)
+    # a-d labels
+    plt.figtext(0.1,0.83,'a',fontweight='bold',fontsize=22)
+    plt.figtext(0.1,0.45,'b',fontweight='bold',fontsize=22)
+    plt.figtext(0.505,0.83,'c',fontweight='bold',fontsize=22)
+    plt.figtext(0.505,0.45,'d',fontweight='bold',fontsize=22)
+    
+    # Model labels
+    plt.figtext(0.13,0.57,'ESM2M',fontsize=18)
+    plt.figtext(0.13,0.22,'CESM2',fontsize=18)
+    plt.figtext(0.53,0.57,'ESM2M',fontsize=18)
+    plt.figtext(0.53,0.22,'CESM2',fontsize=18)
 
     # Overall figure title
     fig.suptitle(title,fontweight='bold');
+    
+def set_emerged(ds,thres):
+    return ((ds<2101).sum('ensemble')>=thres)
     
 def range_plot(ds_esm2m,ds_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
@@ -383,39 +398,36 @@ def range_plot(ds_esm2m,ds_cesm2,title,thres):
     crs = ccrs.Robinson()
 
     # Create figure and axes
-    fig, axs = plt.subplots(ncols=3,nrows=2,figsize=(19,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [0.3,3,3]})
+    fig, axs = plt.subplots(ncols=2,nrows=2,figsize=(16,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [3,3]})
     levels = [1,10,20,30,40,50]
     colors=['indigo','slateblue','mediumseagreen','palegreen','orange']
     
     range_esm2m = ds_esm2m.max('ensemble') - ds_esm2m.min('ensemble')
     range_cesm2 = ds_cesm2.max('ensemble') - ds_cesm2.min('ensemble')
     
+    range_esm2m = range_esm2m.where(set_emerged(ds_esm2m,20),other=0)
+    range_cesm2 = range_cesm2.where(set_emerged(ds_cesm2,20),other=0)
+    
     # Plots of ToE: ESM2M
-    im = contour(range_esm2m[thres[0]],'25% Reduction',axs[0][1],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
-    grid(axs[0][1])
-    scatter(ds_esm2m['0.75'],axs[0][1])
+    im = contour(range_esm2m[thres[0]],'Moderate (25%) Reduction',axs[0][0],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
+    grid(axs[0][0])
+    scatter(ds_esm2m['0.75'],axs[0][0])
     
     levels = [0,1,10,20,30,40,50]
     colors=['darkgray','indigo','slateblue','mediumseagreen','palegreen','orange']
     
-    contour(range_esm2m[thres[1]],'50% Reduction',axs[0][2],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
-    grid(axs[0][2])
-    scatter(ds_esm2m['0.5'],axs[0][2])
+    contour(range_esm2m[thres[1]],'Severe (50%) Reduction',axs[0][1],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
+    grid(axs[0][1])
+    scatter(ds_esm2m['0.5'],axs[0][1])
 
     # Plots of ToE: CESM2
-    contour(range_cesm2[thres[0]],None,axs[1][1],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
+    contour(range_cesm2[thres[0]],None,axs[1][0],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
+    grid(axs[1][0])
+    scatter(ds_cesm2['0.75'],axs[1][0],reduce=True)
+    
+    contour(range_cesm2[thres[1]],None,axs[1][1],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
     grid(axs[1][1])
-    scatter(ds_cesm2['0.75'],axs[1][1],reduce=True)
-    
-    contour(range_cesm2[thres[1]],None,axs[1][2],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
-    grid(axs[1][2])
-    scatter(ds_cesm2['0.5'],axs[1][2],reduce=True)
-    
-    # Annotating text
-    axs[0][0].text(0.5,0.5,'ESM2M',fontsize=22,horizontalalignment='right',verticalalignment='center');
-    axs[0][0].set_frame_on(False)
-    axs[1][0].text(0.5,0.5,'CESM2',fontsize=22,horizontalalignment='right',verticalalignment='center');
-    axs[1][0].set_frame_on(False)
+    scatter(ds_cesm2['0.5'],axs[1][1],reduce=True)
     
      # Single colorbar for all plots
     fig.subplots_adjust(bottom=0.2)
@@ -424,12 +436,19 @@ def range_plot(ds_esm2m,ds_cesm2,title,thres):
     cbar.set_label(u'Δ Years',fontsize=22)
     cbar.set_ticks([1,10,20,30,40,50])
     cbar.set_ticklabels(['1','10','20','30','40','50'])
-    fig.subplots_adjust(wspace=.05,hspace=.05)
-        
-    plt.figtext(0.16,0.83,'a',fontweight='bold',fontsize=22)
-    plt.figtext(0.16,0.45,'b',fontweight='bold',fontsize=22)
-    plt.figtext(0.53,0.83,'c',fontweight='bold',fontsize=22)
-    plt.figtext(0.53,0.45,'d',fontweight='bold',fontsize=22)
+    fig.subplots_adjust(wspace=.08,hspace=.05)
+    
+    # a-d labels
+    plt.figtext(0.1,0.83,'a',fontweight='bold',fontsize=22)
+    plt.figtext(0.1,0.45,'b',fontweight='bold',fontsize=22)
+    plt.figtext(0.505,0.83,'c',fontweight='bold',fontsize=22)
+    plt.figtext(0.505,0.45,'d',fontweight='bold',fontsize=22)
+    
+    # Model labels
+    plt.figtext(0.13,0.57,'ESM2M',fontsize=18)
+    plt.figtext(0.13,0.22,'CESM2',fontsize=18)
+    plt.figtext(0.53,0.57,'ESM2M',fontsize=18)
+    plt.figtext(0.53,0.22,'CESM2',fontsize=18)
     
     # Overall figure title
     fig.suptitle(title,fontweight='bold');
@@ -475,7 +494,7 @@ def average_toe_bar(ds,ds_pop,model,title):
     ds_70 = ds_70.where(ds_70>=0,0)
     
     # Regions to plot
-    regions = ['India','Central America','Northern South America','Southeast Asia','Central Africa','Northern Oceania']
+    regions = ['Indian Subcontinent','Central America','Northern South America','Southeast Asia','Central Africa','Northern Oceania']
 
     fig, ax = plt.subplots(figsize=(20,10))
 
@@ -566,7 +585,7 @@ def frac_emerge_all(ds_toe,ds_pop,model,ylabel,title):
     regions = ['Global','Northern North America','Central North America','Southern North America',
           'Central America','Northern South America','Southern South America',
           'Scandinavia','Central Europe','Southern Europe',
-          'Middle East','India','Southeast Asia','Northern China','Southern China',
+          'Middle East','Indian Subcontinent','Southeast Asia','Northern China','Southern China',
           'Northern Oceania','Southern Oceania',
           'Northern Africa','Central Africa','Southern Africa']
 
