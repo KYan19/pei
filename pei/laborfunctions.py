@@ -179,7 +179,7 @@ def contour(ds,title,ax,levels,cmap='magma',label='Labor Capacity, %',under=None
     
     return im
 
-def scatter(ds,ax,reduce=False):
+def scatter(ds,ax,reduce=False,size=3,color='white'):
     '''Place markers over grid cells that emerge in some ensemble members but not all'''
     # Number of ensemble members
     #ens_num = len(ds['ensemble'].values)
@@ -204,7 +204,7 @@ def scatter(ds,ax,reduce=False):
     
     # Mark grid cells
     crs = ccrs.PlateCarree()
-    ax.scatter(X,Y,transform=crs,zorder=10,marker='.',s=3,c='white')
+    ax.scatter(X,Y,transform=crs,zorder=10,marker='.',s=size,c=color)
 
 def mark_city(city,ax):
     crs = ccrs.PlateCarree()
@@ -328,6 +328,14 @@ def base_contour(base,ax):
     Z, X = add_cyclic_point(Z,coord=X)
     
     ax.contour(X,Y,Z,transform=crs,levels=[90],colors=['white'])
+
+def num_emerged(ds):
+    '''Determines number of ensemble members that are emerged'''
+    return (ds<2101).sum('ensemble')
+    
+def set_emerged(ds,thres):
+    '''Determines whether or not a threshold number of ensemble members are emerged'''
+    return (num_emerged(ds)>=thres)
         
 def spatial_toe(ds_esm2m,ds_cesm2,base_esm2m,base_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
@@ -338,24 +346,36 @@ def spatial_toe(ds_esm2m,ds_cesm2,base_esm2m,base_cesm2,title,thres):
     fig, axs = plt.subplots(ncols=2,nrows=2,figsize=(16,7),subplot_kw={'projection':crs},gridspec_kw={'width_ratios': [3,3]})
     levels = np.linspace(2000,2100,21)
     cmap = 'magma'
+    
+    # Get ensemble mean
+    esm2m_mean = ds_esm2m.mean('ensemble')
+    cesm2_mean = ds_cesm2.mean('ensemble')
+    
+    # Only display grid cells where >=15 members emerge
+    esm2m_mean = esm2m_mean.where(set_emerged(ds_esm2m,15),other=2101)
+    cesm2_mean = cesm2_mean.where(set_emerged(ds_cesm2,15),other=2101)
 
     # Plots of ToE: ESM2M
-    im = contour(ds_esm2m[thres[0]].mean(dim='ensemble'),'Moderate (25%) Reduction',axs[0][0],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    im = contour(esm2m_mean[thres[0]],'Moderate (25%) Reduction',axs[0][0],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     grid(axs[0][0])
     base_contour(base_esm2m,axs[0][0])
+    scatter(ds_esm2m[thres[0]],axs[0][0],size=1,color='black')
     
-    contour(ds_esm2m[thres[1]].mean(dim='ensemble'),'Severe (50%) Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
+    contour(esm2m_mean[thres[1]],'Severe (50%) Reduction',axs[0][1],levels=levels,cmap =cmap,label='Year',extend='max',crop=True)
     grid(axs[0][1])
     base_contour(base_esm2m,axs[0][1])
+    scatter(ds_esm2m[thres[1]],axs[0][1],size=1,color='black')
 
     # Plots of ToE: CESM2
-    contour(ds_cesm2[thres[0]].mean(dim='ensemble'),None,axs[1][0],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    contour(cesm2_mean[thres[0]],None,axs[1][0],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     grid(axs[1][0])
     base_contour(base_cesm2,axs[1][0])
+    scatter(ds_cesm2[thres[0]],axs[1][0],size=1,color='black',reduce=True)
     
-    contour(ds_cesm2[thres[1]].mean(dim='ensemble'),None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
+    contour(cesm2_mean[thres[1]],None,axs[1][1],levels=levels,cmap=cmap,label='Year',extend='max',crop=True)
     grid(axs[1][1])
     base_contour(base_cesm2,axs[1][1])
+    scatter(ds_cesm2[thres[1]],axs[1][1],size=1,color='black',reduce=True)
     
     # Box selected regions
     regions = ['Middle East','Indian Subcontinent','Southeast Asia','Northern Oceania','West Africa','Southeastern US','Southern China']
@@ -389,9 +409,6 @@ def spatial_toe(ds_esm2m,ds_cesm2,base_esm2m,base_cesm2,title,thres):
     # Overall figure title
     fig.suptitle(title,fontweight='bold');
     
-def set_emerged(ds,thres):
-    return ((ds<2101).sum('ensemble')>=thres)
-    
 def range_plot(ds_esm2m,ds_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
     # Specify projection
@@ -402,11 +419,16 @@ def range_plot(ds_esm2m,ds_cesm2,title,thres):
     levels = [1,10,20,30,40,50]
     colors=['indigo','slateblue','mediumseagreen','palegreen','orange']
     
+    # Calculate range
     range_esm2m = ds_esm2m.max('ensemble') - ds_esm2m.min('ensemble')
     range_cesm2 = ds_cesm2.max('ensemble') - ds_cesm2.min('ensemble')
     
-    range_esm2m = range_esm2m.where(set_emerged(ds_esm2m,20),other=0)
-    range_cesm2 = range_cesm2.where(set_emerged(ds_cesm2,20),other=0)
+    # Scale by fraction of cells that are emerged
+    range_esm2m = (30/num_emerged(ds_esm2m))*range_esm2m
+    range_cesm2 = (30/num_emerged(ds_cesm2))*range_cesm2
+    
+    range_esm2m = range_esm2m.where(set_emerged(ds_esm2m,15),other=0)
+    range_cesm2 = range_cesm2.where(set_emerged(ds_cesm2,15),other=0)
     
     # Plots of ToE: ESM2M
     im = contour(range_esm2m[thres[0]],'Moderate (25%) Reduction',axs[0][0],levels=levels,cmap=None,colors=colors,label='Year',over='yellow',under='darkgray',crop=True)
