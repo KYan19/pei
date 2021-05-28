@@ -401,13 +401,20 @@ def spatial_toe(ds_esm2m,ds_cesm2,base_esm2m,base_cesm2,title,thres):
     plt.figtext(0.505,0.45,'d',fontweight='bold',fontsize=22)
     
     # Model labels
-    plt.figtext(0.13,0.57,'ESM2M',fontsize=18)
-    plt.figtext(0.13,0.22,'CESM2',fontsize=18)
-    plt.figtext(0.53,0.57,'ESM2M',fontsize=18)
-    plt.figtext(0.53,0.22,'CESM2',fontsize=18)
+    plt.figtext(0.13,0.605,'ESM2M',fontsize=18)
+    plt.figtext(0.13,0.57,'31%',fontsize=18)
+    
+    plt.figtext(0.13,0.255,'CESM2',fontsize=18)
+    plt.figtext(0.13,0.22,'44%',fontsize=18)
+    
+    plt.figtext(0.53,0.605,'ESM2M',fontsize=18)
+    plt.figtext(0.53,0.57,'8%',fontsize=18)
+    
+    plt.figtext(0.53,0.255,'CESM2',fontsize=18)
+    plt.figtext(0.53,0.22,'28%',fontsize=18)
 
     # Overall figure title
-    fig.suptitle(title,fontweight='bold');
+    #fig.suptitle(title,fontweight='bold');
     
 def range_plot(ds_esm2m,ds_cesm2,title,thres):
     '''Plot spatial map of ToE for all grid cells (global)'''
@@ -468,8 +475,15 @@ def range_plot(ds_esm2m,ds_cesm2,title,thres):
     
     # Model labels
     plt.figtext(0.13,0.57,'ESM2M',fontsize=18)
+    plt.figtext(0.13,0.57,'ESM2M',fontsize=18)
+    
     plt.figtext(0.13,0.22,'CESM2',fontsize=18)
+    plt.figtext(0.13,0.22,'CESM2',fontsize=18)
+    
     plt.figtext(0.53,0.57,'ESM2M',fontsize=18)
+    plt.figtext(0.53,0.57,'ESM2M',fontsize=18)
+    
+    plt.figtext(0.53,0.22,'CESM2',fontsize=18)
     plt.figtext(0.53,0.22,'CESM2',fontsize=18)
     
     # Overall figure title
